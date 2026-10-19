@@ -1,0 +1,6 @@
+{
+  "name": "SEDUC-SP AutoPlano - Processador de Planejamento Escolar",
+  "description": "Automação de planejamento escolar da SEDUC-SP. Preenchimento de formulários e planos oficiais preservando 100% de formatação, fontes e cores.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
