@@ -278,102 +278,51 @@ export const ExportPreview: React.FC<ExportPreviewProps> = ({
         const detectedYear = yearMatch ? yearMatch[1] : '2026';
 
         return (
-          <div className="mt-4 p-4 rounded-xl bg-gradient-to-br from-slate-50 via-white to-blue-50/30 border border-slate-200 shadow-2xs">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2.5 mb-3 border-b border-slate-200/80 gap-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#002B49] flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-amber-500" />
-                  Auditoria Oficial de Carga Horária e Dias Letivos (Células J7, J8 e J9)
-                </h4>
-                <span className="text-xs font-bold text-emerald-900 bg-emerald-100/90 px-2 py-0.5 rounded-md border border-emerald-300">
-                  ✓ Calendário Lido Automaticamente: Ano {detectedYear} • {detectedBim}
-                </span>
-              </div>
-              <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                Formatação, cores e estilos originais preservados
+          <div className="mt-3 p-3 rounded-xl bg-slate-50 border border-slate-200">
+            <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-200/70">
+              <span className="text-xs font-bold text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                Auditoria de Carga Horária (J7, J8, J9)
+              </span>
+              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded">
+                Ano {detectedYear} • {detectedBim}
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-              {/* Card J7 */}
-              <div className="bg-white p-3 rounded-lg border-2 border-blue-200 shadow-2xs">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-extrabold text-blue-900 text-[11px]">Célula J7 • Dias Letivos</span>
-                  <span className="font-mono font-bold bg-[#002B49] text-white px-1.5 py-0.5 rounded text-[10px]">J7</span>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {/* Card J7: [Número] Dias Letivos */}
+              <div className="bg-white px-3 py-2 rounded-lg border border-blue-200 flex items-center justify-between shadow-2xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono bg-[#002B49] text-white px-1.5 py-0.5 rounded text-[10px] font-bold">J7</span>
+                  <span className="text-xs font-semibold text-slate-700">Dias Letivos</span>
                 </div>
-                <div className="flex items-baseline gap-1.5 my-1">
-                  <span className="text-2xl font-black text-slate-900">{j7Val}</span>
-                  <span className="text-[11px] font-bold text-slate-600">dias úteis letivos</span>
-                  <span className="text-[9px] font-bold text-blue-800 bg-blue-50 px-1 py-0.2 rounded border border-blue-200 ml-auto">
-                    Seg-Sex (1-5)
-                  </span>
-                </div>
-                <p className="text-[10px] text-slate-500">
-                  Calculado estritamente de segunda a sexta-feira (dayOfWeek 1 a 5). Sábados e domingos 100% eliminados e descontados feriados em dias úteis.
-                </p>
-                <div className="mt-2 pt-1 border-t border-slate-100 flex items-center justify-between text-[10px]">
-                  <span className="text-slate-400">Gravado em:</span>
-                  <span className="font-mono font-bold text-blue-800">Célula J7 ({j7Val})</span>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-base font-black text-slate-900">{j7Val}</span>
+                  <span className="text-[10px] text-slate-500">dias</span>
                 </div>
               </div>
 
-              {/* Card J8 */}
-              <div className="bg-white p-3 rounded-lg border-2 border-amber-300 shadow-2xs">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-extrabold text-amber-950 text-[11px]">Célula J8 • Total de Aulas do Escopo Apurado</span>
-                  <span className="font-mono font-bold bg-amber-700 text-white px-1.5 py-0.5 rounded text-[10px]">J8</span>
+              {/* Card J8: [Número] Aulas (Dinâmico Slot 2) */}
+              <div className="bg-white px-3 py-2 rounded-lg border border-amber-300 flex items-center justify-between shadow-2xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono bg-amber-700 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">J8</span>
+                  <span className="text-xs font-semibold text-slate-700">Aulas</span>
                 </div>
-                <div className="flex items-baseline gap-1.5 my-1">
-                  <span className="text-2xl font-black text-slate-900">{j8Val}</span>
-                  <span className="text-[11px] font-bold text-amber-900">aulas ({parsedWeeks} semanas)</span>
-                </div>
-                <p className="text-[10px] text-slate-600 font-medium">
-                  Total de Aulas do Escopo Apurado: {j8Val} aulas. Apuração dinâmica integral realizada na leitura da ementa do Slot 2 (Escopo e Sequência) para {planMetadata?.subject || 'o componente'} ({detectedBim}). Sem valor fixo.
-                </p>
-                <div className="mt-2 pt-1 border-t border-slate-100 flex items-center justify-between text-[10px]">
-                  <span className="text-slate-400">Gravado em:</span>
-                  <span className="font-mono font-bold text-amber-800">Célula J8 ({j8Val})</span>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-base font-black text-amber-950">{j8Val}</span>
+                  <span className="text-[10px] text-slate-500">aulas</span>
                 </div>
               </div>
 
-              {/* Card J9 */}
-              <div className="bg-white p-3 rounded-lg border-2 border-emerald-300 shadow-2xs">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-extrabold text-emerald-950 text-[11px]">Célula J9 • Dias Efetivos</span>
-                  <span className="font-mono font-bold bg-emerald-700 text-white px-1.5 py-0.5 rounded text-[10px]">J9</span>
+              {/* Card J9: [Número] Efetivos */}
+              <div className="bg-white px-3 py-2 rounded-lg border border-emerald-300 flex items-center justify-between shadow-2xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono bg-emerald-700 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">J9</span>
+                  <span className="text-xs font-semibold text-slate-700">Efetivos</span>
                 </div>
-                <div className="flex items-baseline gap-1.5 my-1">
-                  <span className="text-2xl font-black text-slate-900">{j9Val}</span>
-                  <span className="text-[11px] font-bold text-slate-600">dias com aulas regulares</span>
-                </div>
-                <p className="text-[10px] text-slate-500">
-                  Dedução dos eventos SEDUC (Planejamento, Conselhos, Provas exclusivas, Feiras) aplicada sobre a base líquida de dias úteis J7.
-                </p>
-                <div className="mt-2 pt-1 border-t border-slate-100 flex items-center justify-between text-[10px]">
-                  <span className="text-slate-400">Gravado em:</span>
-                  <span className="font-mono font-bold text-emerald-800">Célula J9 ({j9Val})</span>
-                </div>
-              </div>
-
-              {/* Card Coluna B: Alocação & Deslocamento por Calendário */}
-              <div className="bg-white p-3 rounded-lg border-2 border-indigo-300 shadow-2xs">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-extrabold text-indigo-950 text-[11px]">Coluna B • Alocação por Calendário</span>
-                  <span className="font-mono font-bold bg-[#002B49] text-white px-1.5 py-0.5 rounded text-[10px]">Col B</span>
-                </div>
-                <div className="flex items-baseline gap-1.5 my-1">
-                  <span className="text-2xl font-black text-indigo-950">100%</span>
-                  <span className="text-[11px] font-bold text-indigo-900">de J8 cumprido</span>
-                  <span className="text-[9px] font-bold text-emerald-800 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200 ml-auto">
-                    Sem Perdas
-                  </span>
-                </div>
-                <p className="text-[10px] text-slate-500">
-                  Varredura dos dias de aula da turma com transferência automática de feriados/suspensões e acumulação no fechamento (SEI).
-                </p>
-                <div className="mt-2 pt-1 border-t border-slate-100 flex items-center justify-between text-[10px]">
-                  <span className="text-slate-400">Gravado em:</span>
-                  <span className="font-mono font-bold text-indigo-800">Coluna B (Linha 28 em diante)</span>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-base font-black text-emerald-950">{j9Val}</span>
+                  <span className="text-[10px] text-slate-500">dias</span>
                 </div>
               </div>
             </div>

@@ -322,13 +322,6 @@ export function computeSlot2DynamicClasses(
   scopeSkills?: ScopeSkill[],
   planMetadata?: PlanMetadata
 ): number {
-  if (planMetadata?.plannedClasses !== undefined && planMetadata?.plannedClasses !== null && planMetadata?.plannedClasses !== '') {
-    const parsed = parseInt(String(planMetadata.plannedClasses).replace(/\D+/g, ''), 10);
-    if (!isNaN(parsed) && parsed > 0) {
-      return parsed;
-    }
-  }
-
   const bimNum = planMetadata?.bimestre ? extractBimestreNumber(planMetadata.bimestre) : 4;
   const targetSubject = normalizeTextClean(planMetadata?.subject || '');
 
@@ -388,6 +381,14 @@ export function computeSlot2DynamicClasses(
 
     if (regularBlocks.length > 0) {
       return regularBlocks.length * 2;
+    }
+  }
+
+  // Fallback quando não há habilidades carregadas no Slot 2
+  if (planMetadata?.plannedClasses !== undefined && planMetadata?.plannedClasses !== null && planMetadata?.plannedClasses !== '') {
+    const parsed = parseInt(String(planMetadata.plannedClasses).replace(/\D+/g, ''), 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      return parsed;
     }
   }
 
@@ -2653,23 +2654,15 @@ export async function injectDataAndExport(
 
       const colLetter = normalizeColLetter(f.colLetter || addr.replace(/\d+/g, ''));
 
-      // STRICT REQUIREMENT (v2.1.3): When a column is configured as "" or "NONE",
-      // the injection engine MUST completely ignore writing to this column from row 28 onwards.
-      // The respective Excel cell must remain strictly empty (null or ""), preserving 100% of the original styles and borders.
-      const profileCols = options?.profile?.columns;
-      const isColConfiguredDisabled = profileCols && (
-        (colLetter === 'B' && isColumnDisabled(profileCols.dateWeekCol)) ||
-        (colLetter === 'D' && isColumnDisabled(profileCols.skillCol)) ||
-        (colLetter === 'E' && isColumnDisabled(profileCols.objectivesCol)) ||
-        (colLetter === 'F' && isColumnDisabled(profileCols.methodologyCol)) ||
-        (colLetter === 'G' && isColumnDisabled(profileCols.developmentCol)) ||
-        (colLetter === 'H' && isColumnDisabled(profileCols.assessmentCol)) ||
-        (colLetter === 'I' && isColumnDisabled(profileCols.recoveryCol)) ||
-        Object.entries(profileCols).some(([k, val]) => isColumnDisabled(val) && DEFAULT_COLUMN_BY_KEY[k] === colLetter)
-      );
-
-      if (cellRow >= 28 && (f.isDisabled || f.disabledByUser || isColConfiguredDisabled || isColumnDisabled(f.colLetter))) {
-        return;
+      // STRICT REQUIREMENT: As ÚNICAS colunas que devem permanecer vazias/em branco são a F (Metodologia) e a H (Avaliação).
+      // As demais colunas da grade semanal (B, D, E, G, I) DEVEM ser preenchidas linha a linha (a partir da Linha 28).
+      if (cellRow >= 28) {
+        if (colLetter === 'F' || colLetter === 'H') {
+          const emptyCell = sheet.getCell(addr);
+          const masterEmpty = emptyCell.isMerged ? (emptyCell.master || emptyCell) : emptyCell;
+          masterEmpty.value = '';
+          return;
+        }
       }
 
       const cell = sheet.getCell(addr);
@@ -2679,7 +2672,10 @@ export async function injectDataAndExport(
       if (['B13', 'B15', 'B17'].includes(addr) || ['B13', 'B15', 'B17'].includes(targetCell.address)) {
         const fixedKey = (['B13', 'B15', 'B17'].includes(addr) ? addr : targetCell.address) as 'B13' | 'B15' | 'B17';
         targetCell.value = FIXED_IMMUTABLE_CELLS[fixedKey].text;
-      } else if (['J7', 'J8', 'J9'].includes(addr)) {
+      } else if (addr === 'J8') {
+        const dynamicJ8 = computeSlot2DynamicClasses(options?.scopeSkills, options?.planMetadata);
+        targetCell.value = dynamicJ8;
+      } else if (['J7', 'J9'].includes(addr)) {
         const parsedInt = parseInt(String(f.fillValue).replace(/\D+/g, ''), 10);
         targetCell.value = !isNaN(parsedInt) ? parsedInt : f.fillValue;
       } else if ((colLetter === 'B' || f.expectedType === 'periodo') && cellRow >= 16) {
@@ -2932,13 +2928,16 @@ export async function injectDataAndExport(
     // STRICT RULE: Enforce Coluna B ("Data prevista") weekly schedule formatted strictly Monday-to-Friday:
     // "Semana X (DD/MM a DD/MM) - N dias letivos [notas]"
     // for all configured weekly rows (e.g., rows 28 onwards) on defaultSheet!
-    if (defaultSheet && configuredStartRow) {
+    // STRICT RULE: Enforce Weekly Schedule Grid (Columns B, D, E, G, I filled line by line; Columns F and H strictly empty)
+    // for all configured weekly rows (e.g., rows 28 onwards) on defaultSheet!
+    if (defaultSheet) {
+      const startR = (configuredStartRow && configuredStartRow >= 28) ? configuredStartRow : 28;
       const activeRowCount = Math.max(configuredRowCount || 11, 11);
       const targetBimNum = options?.planMetadata?.bimestre ? extractBimestreNumber(options.planMetadata.bimestre) : 4;
       const dateColLetter = normalizeColLetter(options?.profile?.columns?.dateWeekCol) || 'B';
 
-      for (let r = configuredStartRow; r < configuredStartRow + activeRowCount; r++) {
-        const weekNum = (r - configuredStartRow) + 1;
+      for (let r = startR; r < startR + activeRowCount; r++) {
+        const weekNum = (r - startR) + 1;
         const isSEI = (weekNum === 10);
         const isClosing = (weekNum === 11);
         const isAval = (weekNum === 9);
@@ -2952,53 +2951,122 @@ export async function injectDataAndExport(
         const weekAllocInfo = getTeacherAllocatedWeekInfo(weekNum, targetBimNum, activeRowCount, options?.calendarData, effectiveYear, teacherSchedConfig);
         const expectedDateText = weekAllocInfo?.fullDateText || getSeducWeekPeriodText(weekNum, targetBimNum, isSEI, isAval, activeRowCount, options?.calendarData, effectiveYear, teacherSchedConfig);
 
+        // 1. Coluna B: Data / Semana
         const dateCellAddr = `${dateColLetter}${r}`;
-        const cell = defaultSheet.getCell(dateCellAddr);
-        const masterCell = cell.isMerged ? (cell.master || cell) : cell;
+        const cellB = defaultSheet.getCell(dateCellAddr);
+        const masterB = cellB.isMerged ? (cellB.master || cellB) : cellB;
 
         // Check if fill has valid text, otherwise inject expectedDateText
-        const fillForCell = fills.find(f => normalizeCoordinate(f.address) === dateCellAddr);
-        let finalVal = expectedDateText;
+        const fillForCellB = fills.find(f => normalizeCoordinate(f.address) === dateCellAddr || (f.row === r && (f.colLetter === 'B' || f.expectedType === 'periodo')));
+        let finalValB = expectedDateText;
         if (
-          fillForCell &&
-          fillForCell.fillValue &&
-          !fillForCell.fillValue.includes('29/07') &&
-          fillForCell.fillValue.toLowerCase().includes('semana') &&
-          !fillForCell.fillValue.toLowerCase().includes('sábado') &&
-          !fillForCell.fillValue.toLowerCase().includes('domingo')
+          fillForCellB &&
+          fillForCellB.fillValue &&
+          !fillForCellB.fillValue.includes('29/07') &&
+          fillForCellB.fillValue.toLowerCase().includes('semana') &&
+          !fillForCellB.fillValue.toLowerCase().includes('sábado') &&
+          !fillForCellB.fillValue.toLowerCase().includes('domingo')
         ) {
-          finalVal = fillForCell.fillValue;
+          finalValB = fillForCellB.fillValue;
         } else {
-          finalVal = expectedDateText;
+          finalValB = expectedDateText;
         }
 
-        masterCell.value = finalVal;
-        masterCell.alignment = {
-          ...(masterCell.alignment || {}),
+        masterB.value = finalValB;
+        masterB.alignment = {
+          ...(masterB.alignment || {}),
           vertical: 'middle',
           horizontal: 'center',
           wrapText: true
         };
-        rowsWritten.add(Number(masterCell.row));
+        rowsWritten.add(r);
+
+        // 2. Colunas F e H: As ÚNICAS colunas que devem permanecer vazias/em branco
+        const cellF = defaultSheet.getCell(`F${r}`);
+        const masterF = cellF.isMerged ? (cellF.master || cellF) : cellF;
+        masterF.value = '';
+
+        const cellH = defaultSheet.getCell(`H${r}`);
+        const masterH = cellH.isMerged ? (cellH.master || cellH) : cellH;
+        masterH.value = '';
+
+        // 3. Colunas D, E, G, I: Preenchidas linha a linha a partir da Linha 28 com os dados do Gemini
+        const cellD = defaultSheet.getCell(`D${r}`);
+        const masterD = cellD.isMerged ? (cellD.master || cellD) : cellD;
+
+        const cellE = defaultSheet.getCell(`E${r}`);
+        const masterE = cellE.isMerged ? (cellE.master || cellE) : cellE;
+
+        const cellG = defaultSheet.getCell(`G${r}`);
+        const masterG = cellG.isMerged ? (cellG.master || cellG) : cellG;
+
+        const cellI = defaultSheet.getCell(`I${r}`);
+        const masterI = cellI.isMerged ? (cellI.master || cellI) : cellI;
+
+        const fillD = fills.find(f => normalizeCoordinate(f.address) === `D${r}` || (f.row === r && (f.colLetter === 'D' || f.id?.includes('_D') || f.expectedType === 'habilidade')));
+        const fillE = fills.find(f => normalizeCoordinate(f.address) === `E${r}` || (f.row === r && (f.colLetter === 'E' || f.id?.includes('_E') || f.expectedType === 'objeto_conhecimento')));
+        const fillG = fills.find(f => normalizeCoordinate(f.address) === `G${r}` || (f.row === r && (f.colLetter === 'G' || f.id?.includes('_G') || f.expectedType === 'desenvolvimento_aula')));
+        const fillI = fills.find(f => normalizeCoordinate(f.address) === `I${r}` || (f.row === r && (f.colLetter === 'I' || f.id?.includes('_I') || f.expectedType === 'recuperacao_sei')));
+
+        const eventName = weekAllocInfo?.holidayReason || 'Dia do Professor';
 
         // REGRA 2 (SEDUC-SP v2.2.3): REMOÇÃO DO PREENCHIMENTO VERMELHO CLARO NA LINHA DE SUSPENSÃO (15/10/2026 - LINHA 29)
         // As células da linha de suspensão (Colunas B até I) mantêm rigorosamente o padrão
-        // de preenchimento neutro/original do modelo Planejamento de Aula URE Taubaté.xlsx
-        // (sem coloração diferenciada de alerta). Nenhum estilo fill com cor de destaque é injetado.
+        // de preenchimento neutro/original do modelo Planejamento de Aula URE Taubaté.xlsx (sem estilo fill de alerta).
         if (weekAllocInfo?.status === 'suspension') {
-          const eventName = weekAllocInfo.holidayReason || 'Dia do Professor';
-          const cellD = defaultSheet.getCell(`D${r}`);
-          (cellD.isMerged ? cellD.master || cellD : cellD).value = 'Evento Oficial / Suspensão de Aulas';
+          masterD.value = fillD?.fillValue || 'Evento Oficial / Suspensão de Aulas';
+          masterE.value = fillE?.fillValue || 'Sem expediente pedagógico presencial conforme calendário escolar oficial SEDUC-SP.';
+          masterG.value = fillG?.fillValue || `Suspensão das atividades letivas em virtude de ${eventName}. Conteúdo didático reprogramado para o próximo encontro letivo.`;
+          masterI.value = fillI?.fillValue || '-';
+        } else if (isSEI) {
+          masterD.value = fillD?.fillValue || 'Semana de Estudos Intensivos (SEI) / Recuperação e Nivelamento • (SEI-RECUPERACAO) - Objeto de Conhecimento: Retomada e consolidação das aprendizagens prioritárias do 4º Bimestre';
+          masterE.value = fillE?.fillValue || 'Retomar, nivelar e consolidar as habilidades essenciais do 4º Bimestre que apresentaram maior índice de defasagem nas avaliações formativas e Prova Paulista.';
+          masterG.value = fillG?.fillValue || 'Bloco 1 (45-50 min): 1. Acolhida e devolutiva pedagógica das defasagens diagnósticas (15 min). 2. Oficinas práticas em duplas produtivas por descritores críticos (30 min). 3. Síntese intermediária (5 min). | Transição e Bloco 2 (45-50 min): 4. Desafios de nivelamento e aplicação contextualizada (30 min). 5. Autoavaliação e registro no diário de bordo (15 min) (Tempo Total: 90-100 min).';
+          masterI.value = fillI?.fillValue || 'Atendimento individualizado para estudantes com defasagens conceituais remanescentes e roteiro personalizado de estudos.';
+        } else if (isClosing) {
+          masterD.value = fillD?.fillValue || 'Conselho de Classe / Fechamento de Médias e Frequências • (CONSELHO-FECHAMENTO) - Objeto de Conhecimento: Fechamento bimestral, apuração de frequência e análise colegiada de rendimento escolar';
+          masterE.value = fillE?.fillValue || 'Consolidar os registros de aproveitamento escolar, realizar o fechamento de médias e frequências e participar colegiadamente das deliberações do Conselho de Classe final.';
+          masterG.value = fillG?.fillValue || 'Etapa 1 (45-50 min): 1. Apuração final e conferência de frequências e notas no Diário Digital / SED (30 min). 2. Lançamento e consolidação das médias finais e menções do 4º Bimestre (20 min). | Transição e Etapa 2 (45-50 min): 3. Participação no Conselho de Classe e deliberações colegiadas de progressão (35 min). 4. Registro em ata institucional e encerramento do ano letivo (15 min) (Tempo Total: 90-100 min).';
+          masterI.value = fillI?.fillValue || 'Registro dos encaminhamentos e pareceres pedagógicos finais para o ciclo seguinte na Secretaria Escolar Digital (SED).';
+        } else {
+          // Semanas regulares de aula: preencher linha a linha com os dados gerados pelo Gemini
+          const skillForWeek = (options?.scopeSkills && options.scopeSkills.length > 0)
+            ? (options.scopeSkills.find(s => s.week === weekNum) || options.scopeSkills[Math.min(weekNum - 1, options.scopeSkills.length - 1)])
+            : undefined;
+          const startLesson = (weekNum === 1 ? 1 : ((weekNum - 1) * 2 - 1));
+          const endLesson = (weekNum === 1 ? 2 : ((weekNum - 1) * 2));
+          const defaultLessonRange = `Aula ${startLesson} e ${endLesson}`;
+          const skillCode = skillForWeek?.code || 'HAB-SP';
+          const skillObj = skillForWeek?.objectOfKnowledge || skillForWeek?.description || 'Conteúdo Estruturante do Currículo Paulista';
 
-          const cellE = defaultSheet.getCell(`E${r}`);
-          (cellE.isMerged ? cellE.master || cellE : cellE).value = 'Sem expediente pedagógico presencial conforme calendário escolar oficial SEDUC-SP.';
-
-          const cellG = defaultSheet.getCell(`G${r}`);
-          (cellG.isMerged ? cellG.master || cellG : cellG).value = `Suspensão das atividades letivas em virtude de ${eventName}. Conteúdo didático reprogramado para o próximo encontro letivo.`;
-
-          const cellI = defaultSheet.getCell(`I${r}`);
-          (cellI.isMerged ? cellI.master || cellI : cellI).value = '-';
+          masterD.value = fillD?.fillValue || `${defaultLessonRange} • (${skillCode}) - Objeto de Conhecimento: ${skillObj}`;
+          masterE.value = fillE?.fillValue || skillForWeek?.description || `Articular os objetivos pedagógicos das ${defaultLessonRange}: Compreender e aplicar os conceitos fundamentais na resolução de situações-problema contextualizadas.`;
+          masterG.value = fillG?.fillValue || `Bloco 1 (45-50 min): 1. Acolhida e problematização disparadora contextualizada (10 min). 2. Investigação e desenvolvimento em duplas (25 min). 3. Sistematização preliminar (10 min). | Transição e Bloco 2 (45-50 min): 4. Aplicação prática dos conceitos e exercícios guiados (25 min). 5. Fechamento formativo e registro no caderno (15 min) (Tempo Total: 90-100 min).`;
+          masterI.value = fillI?.fillValue || 'Atendimento pedagógico individualizado e acompanhamento dos estudantes com defasagens de aprendizagem.';
         }
+
+        // Aplicação de quebra automática de texto e alinhamento
+        [masterD, masterE, masterG, masterI].forEach(m => {
+          m.alignment = {
+            ...(m.alignment || {}),
+            vertical: 'middle',
+            horizontal: 'left',
+            wrapText: true
+          };
+          rowsWritten.add(r);
+        });
+
+        // Garantir que as bordas originais estejam preservadas
+        [masterB, masterD, masterE, masterF, masterG, masterH, masterI].forEach(m => {
+          if (!m.border || Object.keys(m.border).length === 0) {
+            m.border = {
+              top: { style: 'thin', color: { argb: 'CBD5E1' } },
+              bottom: { style: 'thin', color: { argb: 'CBD5E1' } },
+              left: { style: 'thin', color: { argb: 'CBD5E1' } },
+              right: { style: 'thin', color: { argb: 'CBD5E1' } }
+            };
+          }
+        });
       }
     }
 

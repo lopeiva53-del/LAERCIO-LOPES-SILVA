@@ -849,6 +849,22 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido (sem formatação markdown fora do
               };
             }
 
+            // Priority 0.45: Columns F and H MUST strictly remain empty / blank in weekly grid (row >= 28)
+            const colLetCheck = (origField.colLetter || origField.address?.replace(/\d+/g, '') || '').toUpperCase();
+            if ((origField.row >= 28 || origField.id?.startsWith('GRID_')) && (colLetCheck === 'F' || colLetCheck === 'H')) {
+              return {
+                id: origField.id,
+                address: origField.address,
+                sheet: origField.sheet,
+                fillValue: '',
+                justification: `Coluna ${colLetCheck} mantida estritamente vazia/em branco conforme modelo oficial`,
+                isDisabled: true,
+                disabledByUser: true,
+                isSEI: false,
+                isAvaliacao: false
+              };
+            }
+
             // Priority 0.5: Specific fixed evaluation cells C21:C24 and J21:J24
             // Garante que tanto a Coluna C (Instrumentos) quanto a Coluna J (Pesos/Porcentagens) tenham seus valores fixos injetados na íntegra
             if (['C21', 'C22', 'C23', 'C24', 'J21', 'J22', 'J23', 'J24'].includes(addrUpper)) {
@@ -1555,6 +1571,22 @@ function generateSeducPlanFills(
       if (addrUpper === 'J9') {
         return { id: f.id, address: f.address, sheet: f.sheet, fillValue: String(diasEfetivosJ9), justification: 'Dias Letivos Efetivos com Desconto de Eventos (Célula J9 - SEDUC)' };
       }
+    }
+
+    // Colunas F e H estritamente vazias na grade semanal
+    const colLetCheck = (f.colLetter || f.address?.replace(/\d+/g, '') || '').toUpperCase();
+    if ((f.row >= 28 || f.id?.startsWith('GRID_')) && (colLetCheck === 'F' || colLetCheck === 'H')) {
+      return {
+        id: f.id,
+        address: f.address,
+        sheet: f.sheet,
+        fillValue: '',
+        justification: `Coluna ${colLetCheck} mantida estritamente vazia/em branco conforme modelo oficial`,
+        isDisabled: true,
+        disabledByUser: true,
+        isSEI: false,
+        isAvaliacao: false
+      };
     }
 
     // Coluna Desativada / Em Branco pelo Usuário (v2.1.3)

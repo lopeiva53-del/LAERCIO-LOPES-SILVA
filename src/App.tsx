@@ -32,7 +32,10 @@ import {
   generateSuggestedFileName,
   saveFileWithPicker,
   downloadBlobDirect,
-  SaveResult
+  SaveResult,
+  normalizeCoordinate,
+  normalizeColLetter,
+  computeSlot2DynamicClasses
 } from './utils/fileEngine';
 import { 
   SAMPLE_SCOPE_SKILLS,
@@ -52,8 +55,7 @@ import {
   Table, 
   Sparkles, 
   Download, 
-  RotateCcw,
-  Lock
+  RotateCcw
 } from 'lucide-react';
 import { APP_VERSION, APP_VERSION_LABEL } from './config/version';
 
@@ -187,12 +189,22 @@ export default function App() {
         setPrioritizedPdfSkills(guideParsed);
       }
 
+      let resolvedSkills: any[] = [];
       if (slot2Mode === 'guide_pdf_only' && guideParsed.length > 0) {
-        setScopeSkills(guideParsed);
+        resolvedSkills = guideParsed;
       } else if (slot2Mode === 'both' && guideParsed.length > 0 && scopeParsed.length > 0) {
-        setScopeSkills(mergeScopeAndPrioritizedGuide(scopeParsed, guideParsed));
+        resolvedSkills = mergeScopeAndPrioritizedGuide(scopeParsed, guideParsed);
       } else if (scopeParsed.length > 0) {
-        setScopeSkills(scopeParsed);
+        resolvedSkills = scopeParsed;
+      }
+
+      if (resolvedSkills.length > 0) {
+        setScopeSkills(resolvedSkills);
+        const dynamicJ8 = computeSlot2DynamicClasses(resolvedSkills, updated);
+        const metaWithJ8 = { ...updated, plannedClasses: dynamicJ8 };
+        setPlanMetadata(metaWithJ8);
+        savePlanMetadata(metaWithJ8);
+        setActiveProfile(prev => ({ ...prev, plannedClasses: dynamicJ8 }));
       }
     } catch (err) {
       console.warn('Erro ao atualizar habilidades com novo cabeçalho:', err);
@@ -269,17 +281,24 @@ export default function App() {
 
           updatedSlot.summary = `${guideSkills.length} habilidades priorizadas filtradas (${planMetadata.subject || 'Disciplina'}, ${planMetadata.bimestre || 'Bimestre'})`;
 
+          let activeSkills: ScopeSkill[] = [];
           if (slot2Mode === 'both') {
             setSlot2Guide(updatedSlot);
             if (slot2.status === 'ready') {
-              setScopeSkills(mergeScopeAndPrioritizedGuide(scopeSkills, guideSkills));
+              activeSkills = mergeScopeAndPrioritizedGuide(scopeSkills, guideSkills);
             } else {
-              setScopeSkills(guideSkills);
+              activeSkills = guideSkills;
             }
           } else {
             setSlot2(updatedSlot);
-            setScopeSkills(guideSkills);
+            activeSkills = guideSkills;
           }
+          setScopeSkills(activeSkills);
+          const dynamicJ8 = computeSlot2DynamicClasses(activeSkills, planMetadata);
+          const metaWithJ8 = { ...planMetadata, plannedClasses: dynamicJ8 };
+          setPlanMetadata(metaWithJ8);
+          savePlanMetadata(metaWithJ8);
+          setActiveProfile(prev => ({ ...prev, plannedClasses: dynamicJ8 }));
         } catch (err: any) {
           updatedSlot.summary = 'Guia de Habilidades Priorizadas (.pdf) carregado';
           if (slot2Mode === 'both') setSlot2Guide(updatedSlot);
@@ -295,11 +314,18 @@ export default function App() {
           const skills = await parseScopeSequence(buffer, format, planMetadata);
           updatedSlot.summary = `${skills.length} habilidades filtradas para ${planMetadata.subject || 'Disciplina'} (${planMetadata.bimestre || '1º Bim'})`;
 
+          let activeSkills: ScopeSkill[] = [];
           if (slot2Mode === 'both' && slot2Guide.status === 'ready' && prioritizedPdfSkills.length > 0) {
-            setScopeSkills(mergeScopeAndPrioritizedGuide(skills, prioritizedPdfSkills));
+            activeSkills = mergeScopeAndPrioritizedGuide(skills, prioritizedPdfSkills);
           } else {
-            setScopeSkills(skills);
+            activeSkills = skills;
           }
+          setScopeSkills(activeSkills);
+          const dynamicJ8 = computeSlot2DynamicClasses(activeSkills, planMetadata);
+          const metaWithJ8 = { ...planMetadata, plannedClasses: dynamicJ8 };
+          setPlanMetadata(metaWithJ8);
+          savePlanMetadata(metaWithJ8);
+          setActiveProfile(prev => ({ ...prev, plannedClasses: dynamicJ8 }));
         } catch (err) {
           updatedSlot.summary = 'Escopo e Sequência carregado com sucesso';
         }
@@ -635,10 +661,13 @@ export default function App() {
       setProcessPercent(96);
       setProcessStatusMessage('Injetando formatação e finalizando arquivo Excel...');
 
-      // Map generated fills into fields
+      // Map generated fills into fields indexing by id, address, and row_col
       const fillsMap = new Map<string, any>();
       fillsData.forEach((fill: any) => {
-        fillsMap.set(fill.id, fill);
+        if (fill.id) fillsMap.set(fill.id, fill);
+        const addr = normalizeCoordinate(fill.address);
+        if (addr) fillsMap.set(addr, fill);
+        if (fill.row && fill.colLetter) fillsMap.set(`${fill.row}_${normalizeColLetter(fill.colLetter)}`, fill);
       });
 
       const updatedFields = fields.map(f => {
@@ -661,11 +690,29 @@ export default function App() {
           }
         }
 
-        const fillData = fillsMap.get(f.id);
+        const addrUpper = normalizeCoordinate(f.address);
+        const colLet = normalizeColLetter(f.colLetter || addrUpper.replace(/\d+/g, ''));
+        const rowNum = f.row || parseInt(addrUpper.replace(/\D+/g, ''), 10);
+
+        // Columns F and H MUST strictly remain empty/blank
+        if (rowNum >= 28 && (colLet === 'F' || colLet === 'H')) {
+          return {
+            ...f,
+            fillValue: '',
+            confirmed: true,
+            isDisabled: true,
+            disabledByUser: true
+          };
+        }
+
+        const fillData = fillsMap.get(f.id) ||
+                         (addrUpper ? fillsMap.get(addrUpper) : undefined) ||
+                         (rowNum && colLet ? fillsMap.get(`${rowNum}_${colLet}`) : undefined);
+
         if (fillData) {
           return {
             ...f,
-            fillValue: fillData.fillValue || f.fillValue,
+            fillValue: fillData.fillValue !== undefined ? fillData.fillValue : f.fillValue,
             justification: fillData.justification || f.justification,
             isSEI: fillData.isSEI !== undefined ? fillData.isSEI : f.isSEI,
             isAvaliacao: fillData.isAvaliacao !== undefined ? fillData.isAvaliacao : f.isAvaliacao,
@@ -673,7 +720,10 @@ export default function App() {
             holidayReason: fillData.holidayReason || f.holidayReason,
             lessonRange: fillData.lessonRange || f.lessonRange,
             sourcePage: fillData.sourcePage || f.sourcePage,
-            sourceReference: fillData.sourceReference || f.sourceReference
+            sourceReference: fillData.sourceReference || f.sourceReference,
+            confirmed: true,
+            isDisabled: false,
+            disabledByUser: false
           };
         }
         return f;
@@ -684,36 +734,50 @@ export default function App() {
       // Strict coordinate injection into original file buffer!
       if (slot1.dataBuffer && slot1.format !== 'unknown') {
         const targetSheet = activeProfile.targetSheet || activeSheet;
-        const configuredStartRow = Number(activeProfile.startRow) || 16;
-        const configuredRowCount = Number(activeProfile.rowCount) || 10;
+        const configuredStartRow = Number(activeProfile.startRow) || 28;
+        const configuredRowCount = Math.max(Number(activeProfile.rowCount) || 11, 11);
 
         // Build fills from updatedFields (confirmed and populated)
-        // STRICT RULE: If startRow is configured (e.g. 28), NEVER include weekly grid fields below startRow!
+        // REQUISITO ESTRITO: As 5 colunas ativas (B, D, E, G, I) são repassadas integralmente linha a linha
+        // As colunas F e H permanecem estritamente vazias.
         const fillsToInject = updatedFields
-          .filter(f => f.confirmed && f.fillValue)
           .filter(f => {
             const addrUpper = (f.address || '').toUpperCase().trim();
-            // NUNCA filtrar campos fixos de avaliação C21:C24 e J21:J24, cabeçalhos ou B17
-            if (['C21', 'C22', 'C23', 'C24', 'J21', 'J22', 'J23', 'J24', 'B17'].includes(addrUpper) || f.id.startsWith('EVAL_') || f.id.startsWith('HDR_') || f.injectionMode === 'literal') {
+            const colLet = normalizeColLetter(f.colLetter || addrUpper.replace(/\d+/g, ''));
+            const rowNum = f.row || parseInt(addrUpper.replace(/\D+/g, ''), 10);
+
+            // Columns F and H MUST remain empty
+            if (rowNum >= 28 && (colLet === 'F' || colLet === 'H')) {
+              return false;
+            }
+
+            // NUNCA filtrar campos fixos de avaliação C21:C24 e J21:J24, cabeçalhos ou B17/J7/J8/J9
+            if (['C21', 'C22', 'C23', 'C24', 'J21', 'J22', 'J23', 'J24', 'B13', 'B15', 'B17', 'J7', 'J8', 'J9'].includes(addrUpper) || f.id.startsWith('EVAL_') || f.id.startsWith('HDR_') || f.injectionMode === 'literal') {
               return true;
             }
-            // If field has a row number and is a weekly lesson grid, strictly enforce row >= startRow
-            if (f.id.startsWith('GRID_') || f.section?.toLowerCase().includes('semana')) {
-              if (f.row < configuredStartRow) {
-                return false;
-              }
+
+            // Weekly lesson grid: columns B, D, E, G, I
+            if (f.id.startsWith('GRID_') || f.section?.toLowerCase().includes('semana') || rowNum >= 28) {
+              if (rowNum < configuredStartRow) return false;
+              return ['B', 'D', 'E', 'G', 'I'].includes(colLet) && Boolean(f.fillValue);
             }
-            return true;
+
+            return f.confirmed && Boolean(f.fillValue);
           })
-          .map(f => ({
-            id: f.id,
-            address: f.address,
-            sheet: f.sheet || targetSheet,
-            fillValue: String(f.fillValue || ''),
-            row: f.row,
-            colLetter: f.colLetter,
-            section: f.section
-          }));
+          .map(f => {
+            const addrUpper = (f.address || '').toUpperCase().trim();
+            const colLet = normalizeColLetter(f.colLetter || addrUpper.replace(/\d+/g, ''));
+            const rowNum = f.row || parseInt(addrUpper.replace(/\D+/g, ''), 10);
+            return {
+              id: f.id,
+              address: f.address,
+              sheet: f.sheet || targetSheet,
+              fillValue: String(f.fillValue || ''),
+              row: rowNum,
+              colLetter: colLet,
+              section: f.section
+            };
+          });
 
         const generatedBuffer = await injectDataAndExport(
           slot1.format as 'xlsx' | 'docx' | 'pdf',
@@ -764,26 +828,47 @@ export default function App() {
       // On-demand generation if buffer is not yet compiled
       if (!bufferToDownload && slot1.dataBuffer && slot1.format !== 'unknown') {
         const targetSheet = activeProfile.targetSheet || activeSheet;
-        const configuredStartRow = Number(activeProfile.startRow) || 16;
-        const configuredRowCount = Number(activeProfile.rowCount) || 10;
+        const configuredStartRow = Number(activeProfile.startRow) || 28;
+        const configuredRowCount = Math.max(Number(activeProfile.rowCount) || 11, 11);
 
         const fillsToInject = fields
-          .filter(f => f.confirmed && f.fillValue)
           .filter(f => {
-            if (f.id.startsWith('GRID_') || f.section?.toLowerCase().includes('semana')) {
-              if (f.row < configuredStartRow) return false;
+            const addrUpper = (f.address || '').toUpperCase().trim();
+            const colLet = normalizeColLetter(f.colLetter || addrUpper.replace(/\d+/g, ''));
+            const rowNum = f.row || parseInt(addrUpper.replace(/\D+/g, ''), 10);
+
+            // Columns F and H MUST remain empty
+            if (rowNum >= 28 && (colLet === 'F' || colLet === 'H')) {
+              return false;
             }
-            return true;
+
+            // Fixed cells and headers
+            if (['C21', 'C22', 'C23', 'C24', 'J21', 'J22', 'J23', 'J24', 'B13', 'B15', 'B17', 'J7', 'J8', 'J9'].includes(addrUpper) || f.id.startsWith('EVAL_') || f.id.startsWith('HDR_') || f.injectionMode === 'literal') {
+              return true;
+            }
+
+            // Weekly lesson grid: columns B, D, E, G, I
+            if (f.id.startsWith('GRID_') || f.section?.toLowerCase().includes('semana') || rowNum >= 28) {
+              if (rowNum < configuredStartRow) return false;
+              return ['B', 'D', 'E', 'G', 'I'].includes(colLet) && Boolean(f.fillValue);
+            }
+
+            return f.confirmed && Boolean(f.fillValue);
           })
-          .map(f => ({
-            id: f.id,
-            address: f.address,
-            sheet: f.sheet || targetSheet,
-            fillValue: String(f.fillValue || ''),
-            row: f.row,
-            colLetter: f.colLetter,
-            section: f.section
-          }));
+          .map(f => {
+            const addrUpper = (f.address || '').toUpperCase().trim();
+            const colLet = normalizeColLetter(f.colLetter || addrUpper.replace(/\d+/g, ''));
+            const rowNum = f.row || parseInt(addrUpper.replace(/\D+/g, ''), 10);
+            return {
+              id: f.id,
+              address: f.address,
+              sheet: f.sheet || targetSheet,
+              fillValue: String(f.fillValue || ''),
+              row: rowNum,
+              colLetter: colLet,
+              section: f.section
+            };
+          });
 
         bufferToDownload = await injectDataAndExport(
           slot1.format as 'xlsx' | 'docx' | 'pdf',
@@ -825,26 +910,47 @@ export default function App() {
       // Geração on-demand se o buffer ainda não estiver compilado
       if (!bufferToSave && slot1.dataBuffer && slot1.format !== 'unknown') {
         const targetSheet = activeProfile.targetSheet || activeSheet;
-        const configuredStartRow = Number(activeProfile.startRow) || 16;
-        const configuredRowCount = Number(activeProfile.rowCount) || 10;
+        const configuredStartRow = Number(activeProfile.startRow) || 28;
+        const configuredRowCount = Math.max(Number(activeProfile.rowCount) || 11, 11);
 
         const fillsToInject = fields
-          .filter(f => f.confirmed && f.fillValue)
           .filter(f => {
-            if (f.id.startsWith('GRID_') || f.section?.toLowerCase().includes('semana')) {
-              if (f.row < configuredStartRow) return false;
+            const addrUpper = (f.address || '').toUpperCase().trim();
+            const colLet = normalizeColLetter(f.colLetter || addrUpper.replace(/\d+/g, ''));
+            const rowNum = f.row || parseInt(addrUpper.replace(/\D+/g, ''), 10);
+
+            // Columns F and H MUST remain empty
+            if (rowNum >= 28 && (colLet === 'F' || colLet === 'H')) {
+              return false;
             }
-            return true;
+
+            // Fixed cells and headers
+            if (['C21', 'C22', 'C23', 'C24', 'J21', 'J22', 'J23', 'J24', 'B13', 'B15', 'B17', 'J7', 'J8', 'J9'].includes(addrUpper) || f.id.startsWith('EVAL_') || f.id.startsWith('HDR_') || f.injectionMode === 'literal') {
+              return true;
+            }
+
+            // Weekly lesson grid: columns B, D, E, G, I
+            if (f.id.startsWith('GRID_') || f.section?.toLowerCase().includes('semana') || rowNum >= 28) {
+              if (rowNum < configuredStartRow) return false;
+              return ['B', 'D', 'E', 'G', 'I'].includes(colLet) && Boolean(f.fillValue);
+            }
+
+            return f.confirmed && Boolean(f.fillValue);
           })
-          .map(f => ({
-            id: f.id,
-            address: f.address,
-            sheet: f.sheet || targetSheet,
-            fillValue: String(f.fillValue || ''),
-            row: f.row,
-            colLetter: f.colLetter,
-            section: f.section
-          }));
+          .map(f => {
+            const addrUpper = (f.address || '').toUpperCase().trim();
+            const colLet = normalizeColLetter(f.colLetter || addrUpper.replace(/\d+/g, ''));
+            const rowNum = f.row || parseInt(addrUpper.replace(/\D+/g, ''), 10);
+            return {
+              id: f.id,
+              address: f.address,
+              sheet: f.sheet || targetSheet,
+              fillValue: String(f.fillValue || ''),
+              row: rowNum,
+              colLetter: colLet,
+              section: f.section
+            };
+          });
 
         bufferToSave = await injectDataAndExport(
           slot1.format as 'xlsx' | 'docx' | 'pdf',
@@ -893,7 +999,7 @@ export default function App() {
       />
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-3.5 space-y-3.5">
         {/* Error Notification */}
         {errorMessage && (
           <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-r-xl shadow-xs flex items-start justify-between gap-3 animate-in fade-in">
@@ -988,24 +1094,6 @@ export default function App() {
             scopeSkills={scopeSkills}
           />
         )}
-
-        {/* Pedagogical Reference Card & Version Banner */}
-        <footer className="bg-slate-100 rounded-xl p-4 text-xs text-slate-500 border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-bold text-slate-800">SEDUC-SP AutoPlano</span>
-            <span className="font-mono font-bold text-[11px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded border border-emerald-300">
-              {APP_VERSION} (Freeze Estável)
-            </span>
-            <span>• Injeção guiada por coordenadas (Cell-Map Profile) para URE Taubaté e Diretorias de Ensino.</span>
-          </div>
-          <div className="flex items-center gap-3 text-slate-500 text-[11px] flex-wrap">
-            <span>Perfil: <strong>{activeProfile.name}</strong></span>
-            <span className="flex items-center gap-1 font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-              <Lock className="w-3 h-3 text-amber-600" /> Células Fixas: B13, B15 e B17 Imutáveis
-            </span>
-            <span className="text-emerald-700 font-bold">✓ Base Estável Congelada</span>
-          </div>
-        </footer>
       </main>
     </div>
   );

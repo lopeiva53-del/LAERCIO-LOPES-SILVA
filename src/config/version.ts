@@ -6,10 +6,10 @@
  * garantindo estabilidade e integridade contra regressões ("freeze" da versão estável).
  */
 
-export const APP_VERSION = "v2.2.6";
-export const APP_BUILD = "2026.2.16-freeze";
+export const APP_VERSION = "v2.2.9";
+export const APP_BUILD = "2026.2.19-freeze";
 export const APP_NAME = "SEDUC-SP AutoPlano";
-export const APP_VERSION_LABEL = "v2.2.6 (J8 Dinâmico Apurado do Escopo)";
+export const APP_VERSION_LABEL = "v2.2.9 (Etapa 3 Minimalista e Limpa)";
 
 /**
  * Textos Literais Fixos Imutáveis para as Células B13, B15 e B17.

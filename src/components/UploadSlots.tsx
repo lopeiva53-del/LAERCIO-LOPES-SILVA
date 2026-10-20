@@ -85,34 +85,29 @@ export const UploadSlots: React.FC<UploadSlotsProps> = ({
       : (slot2.status === 'ready' && slot2Guide?.status === 'ready');
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between pb-5 border-b border-slate-100 gap-2">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-[#002B49] text-white flex items-center justify-center text-xs font-bold">
-              1
-            </span>
-            <h2 className="text-lg font-bold text-slate-900">
-              Etapa de Upload: Slots Obrigatórios
-            </h2>
-          </div>
-          <p className="text-sm text-slate-500 mt-1">
-            Carregue seus arquivos originais. O sistema utilizará o arquivo do <strong>Slot 1</strong> como base imutável, preenchendo somente as células necessárias.
-          </p>
+    <div className="bg-white rounded-xl shadow-2xs border border-slate-200 p-4 sm:p-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
+        <div className="flex items-center gap-2">
+          <span className="w-5 h-5 rounded-full bg-[#002B49] text-white flex items-center justify-center text-xs font-bold">
+            1
+          </span>
+          <h2 className="text-base font-bold text-slate-900">
+            Upload dos Slots
+          </h2>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${
             allSlotsFilled 
               ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
               : 'bg-amber-50 text-amber-700 border-amber-200'
           }`}>
-            {allSlotsFilled ? 'Todos os slots preenchidos' : 'Aguardando arquivos obrigatórios'}
+            {allSlotsFilled ? 'Slots prontos' : 'Aguardando arquivos'}
           </span>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5 mt-3.5">
         {/* Slot 1: Formulário Padrão */}
         <div 
           onDrop={(e) => handleDrop(e, 1)}
@@ -476,32 +471,25 @@ export const UploadSlots: React.FC<UploadSlotsProps> = ({
       </div>
 
       {/* Card de Identificação / Cabeçalho */}
-      <div className="mt-8 border border-slate-200/90 rounded-2xl bg-gradient-to-br from-slate-50 via-white to-blue-50/20 p-5 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3.5 border-b border-slate-200/70 gap-2 mb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#002B49] text-amber-400 flex items-center justify-center shadow-xs">
-              <Building2 className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                Dados de Identificação / Cabeçalho
-                <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <Check className="w-3 h-3 text-emerald-600" />
-                  Salvo automaticamente
-                </span>
-              </h3>
-              <p className="text-xs text-slate-500">
-                Preencha os dados do cabeçalho. Eles são salvos no seu perfil e gravados com prioridade direta nas células correspondentes do modelo.
-              </p>
-            </div>
+      <div className="mt-4 border border-slate-200 rounded-xl bg-slate-50/50 p-3.5 shadow-2xs">
+        <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-slate-200/70">
+          <div className="flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-[#002B49]" />
+            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+              Dados de Cabeçalho
+            </h3>
           </div>
+          <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
+            Salvo automaticamente
+          </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 text-xs">
-          {/* Unidade Escolar */}
-          <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs hover:border-blue-300 transition-colors">
-            <label className="block text-slate-700 font-bold mb-1.5 flex items-center gap-1.5">
-              <Building2 className="w-3.5 h-3.5 text-[#002B49]" />
+        {/* Grid Compacto 3 Colunas x 2 Linhas */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 text-xs">
+          {/* Linha 1: Escola */}
+          <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+            <label className="block text-slate-600 font-bold mb-1 text-[11px] flex items-center gap-1">
+              <Building2 className="w-3 h-3 text-[#002B49]" />
               Unidade Escolar:
             </label>
             <input
@@ -509,17 +497,14 @@ export const UploadSlots: React.FC<UploadSlotsProps> = ({
               value={metadata.school}
               onChange={(e) => onChangeMetadata({ ...metadata, school: e.target.value })}
               placeholder="ex: EE Prof. Álvaro Ortiz"
-              className="w-full bg-slate-50/60 focus:bg-white border border-slate-200 focus:border-[#005A9C] rounded-lg p-2 font-medium text-slate-800 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all placeholder:text-slate-400"
+              className="w-full bg-slate-50/60 focus:bg-white border border-slate-200 focus:border-[#005A9C] rounded-md px-2 py-1 font-medium text-slate-800 focus:outline-none"
             />
-            <span className="text-[10px] text-slate-400 mt-1 block">
-              Injetado na célula de Escola
-            </span>
           </div>
 
-          {/* Professor(a) */}
-          <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs hover:border-blue-300 transition-colors">
-            <label className="block text-slate-700 font-bold mb-1.5 flex items-center gap-1.5">
-              <User className="w-3.5 h-3.5 text-[#002B49]" />
+          {/* Linha 1: Docente */}
+          <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+            <label className="block text-slate-600 font-bold mb-1 text-[11px] flex items-center gap-1">
+              <User className="w-3 h-3 text-[#002B49]" />
               Professor(a):
             </label>
             <input
@@ -527,35 +512,29 @@ export const UploadSlots: React.FC<UploadSlotsProps> = ({
               value={metadata.teacherName}
               onChange={(e) => onChangeMetadata({ ...metadata, teacherName: e.target.value })}
               placeholder="ex: Nome do docente"
-              className="w-full bg-slate-50/60 focus:bg-white border border-slate-200 focus:border-[#005A9C] rounded-lg p-2 font-medium text-slate-800 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all placeholder:text-slate-400"
+              className="w-full bg-slate-50/60 focus:bg-white border border-slate-200 focus:border-[#005A9C] rounded-md px-2 py-1 font-medium text-slate-800 focus:outline-none"
             />
-            <span className="text-[10px] text-slate-400 mt-1 block">
-              Injetado na célula do Docente
-            </span>
           </div>
 
-          {/* Componente Curricular / Disciplina */}
-          <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs hover:border-blue-300 transition-colors">
-            <label className="block text-slate-700 font-bold mb-1.5 flex items-center gap-1.5">
-              <BookOpen className="w-3.5 h-3.5 text-[#002B49]" />
-              Componente / Disciplina:
+          {/* Linha 1: Disciplina */}
+          <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+            <label className="block text-slate-600 font-bold mb-1 text-[11px] flex items-center gap-1">
+              <BookOpen className="w-3 h-3 text-[#002B49]" />
+              Disciplina / Componente:
             </label>
             <input
               type="text"
               value={metadata.subject}
               onChange={(e) => onChangeMetadata({ ...metadata, subject: e.target.value })}
               placeholder="ex: Matemática, Química"
-              className="w-full bg-slate-50/60 focus:bg-white border border-slate-200 focus:border-[#005A9C] rounded-lg p-2 font-medium text-slate-800 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all placeholder:text-slate-400"
+              className="w-full bg-slate-50/60 focus:bg-white border border-slate-200 focus:border-[#005A9C] rounded-md px-2 py-1 font-medium text-slate-800 focus:outline-none"
             />
-            <span className="text-[10px] text-slate-400 mt-1 block">
-              Injetado na célula de Disciplina
-            </span>
           </div>
 
-          {/* Turma / Série */}
-          <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs hover:border-blue-300 transition-colors">
-            <label className="block text-slate-700 font-bold mb-1.5 flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5 text-[#002B49]" />
+          {/* Linha 2: Turma */}
+          <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+            <label className="block text-slate-600 font-bold mb-1 text-[11px] flex items-center gap-1">
+              <Users className="w-3 h-3 text-[#002B49]" />
               Turma / Série:
             </label>
             <input
@@ -563,43 +542,37 @@ export const UploadSlots: React.FC<UploadSlotsProps> = ({
               value={metadata.grade}
               onChange={(e) => onChangeMetadata({ ...metadata, grade: e.target.value })}
               placeholder="ex: 9º Ano A, 1ª Série EM"
-              className="w-full bg-slate-50/60 focus:bg-white border border-slate-200 focus:border-[#005A9C] rounded-lg p-2 font-medium text-slate-800 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all placeholder:text-slate-400"
+              className="w-full bg-slate-50/60 focus:bg-white border border-slate-200 focus:border-[#005A9C] rounded-md px-2 py-1 font-medium text-slate-800 focus:outline-none"
             />
-            <span className="text-[10px] text-slate-400 mt-1 block">
-              Injetado na célula de Turma
-            </span>
           </div>
 
-          {/* Bimestre */}
-          <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs hover:border-blue-300 transition-colors">
-            <label className="block text-slate-700 font-bold mb-1.5 flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-[#002B49]" />
+          {/* Linha 2: Bimestre */}
+          <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+            <label className="block text-slate-600 font-bold mb-1 text-[11px] flex items-center gap-1">
+              <Calendar className="w-3 h-3 text-[#002B49]" />
               Bimestre:
             </label>
             <select
               value={metadata.bimestre}
               onChange={(e) => onChangeMetadata({ ...metadata, bimestre: e.target.value })}
-              className="w-full bg-slate-50/60 focus:bg-white border border-slate-200 focus:border-[#005A9C] rounded-lg p-2 font-bold text-blue-900 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all cursor-pointer"
+              className="w-full bg-slate-50/60 focus:bg-white border border-slate-200 focus:border-[#005A9C] rounded-md px-2 py-1 font-bold text-blue-900 focus:outline-none cursor-pointer"
             >
               <option value="1º Bimestre">1º Bimestre</option>
               <option value="2º Bimestre">2º Bimestre</option>
               <option value="3º Bimestre">3º Bimestre</option>
               <option value="4º Bimestre">4º Bimestre</option>
             </select>
-            <span className="text-[10px] text-slate-400 mt-1 block">
-              Injetado na célula de Bimestre
-            </span>
           </div>
 
-          {/* Ano Letivo Detectado (Editável) */}
-          <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs hover:border-blue-300 transition-colors">
-            <label className="block text-slate-700 font-bold mb-1.5 flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-[#002B49]" />
-                Ano Letivo Detectado:
+          {/* Linha 2: Ano Letivo */}
+          <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+            <label className="block text-slate-600 font-bold mb-1 text-[11px] flex items-center justify-between">
+              <span className="flex items-center gap-1">
+                <Calendar className="w-3 h-3 text-[#002B49]" />
+                Ano Letivo:
               </span>
               {calendarData?.isAutoExtracted && (
-                <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
+                <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1 py-0.2 rounded font-bold uppercase">
                   Auto
                 </span>
               )}
@@ -629,15 +602,12 @@ export const UploadSlots: React.FC<UploadSlotsProps> = ({
                 });
               }}
               placeholder="2026"
-              className="w-full bg-slate-50/60 focus:bg-white border border-slate-200 focus:border-[#005A9C] rounded-lg p-2 font-black text-slate-900 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all cursor-pointer"
+              className="w-full bg-slate-50/60 focus:bg-white border border-slate-200 focus:border-[#005A9C] rounded-md px-2 py-1 font-black text-slate-900 focus:outline-none cursor-pointer"
             />
-            <span className="text-[10px] text-slate-400 mt-1 block">
-              Ano base do calendário (Slot 3)
-            </span>
           </div>
         </div>
 
-        {/* 1.1 SELEÇÃO DOS DIAS DE AULA DA TURMA & MOTOR DE ALOCAÇÃO POR CALENDÁRIO */}
+        {/* 1.1 Grade Horária e Dias (Badges/Chips Compactos) */}
         {(() => {
           const currentDays = Array.isArray(metadata.classDays) && metadata.classDays.length > 0
             ? metadata.classDays
@@ -647,18 +617,18 @@ export const UploadSlots: React.FC<UploadSlotsProps> = ({
             : 2;
 
           const WEEKDAYS = [
-            { day: 1, name: 'Segunda-feira', short: 'Seg' },
-            { day: 2, name: 'Terça-feira', short: 'Ter' },
-            { day: 3, name: 'Quarta-feira', short: 'Qua' },
-            { day: 4, name: 'Quinta-feira', short: 'Qui' },
-            { day: 5, name: 'Sexta-feira', short: 'Sex' },
+            { day: 1, short: 'Seg' },
+            { day: 2, short: 'Ter' },
+            { day: 3, short: 'Qua' },
+            { day: 4, short: 'Qui' },
+            { day: 5, short: 'Sex' },
           ];
 
           const toggleDay = (dNum: number) => {
             let nextDays: number[];
             if (currentDays.includes(dNum)) {
               nextDays = currentDays.filter(d => d !== dNum);
-              if (nextDays.length === 0) nextDays = [dNum]; // Keep at least one
+              if (nextDays.length === 0) nextDays = [dNum];
             } else {
               nextDays = [...currentDays, dNum].sort((a, b) => a - b);
             }
@@ -684,150 +654,55 @@ export const UploadSlots: React.FC<UploadSlotsProps> = ({
             });
           };
 
-          const schedulePreview = generateTeacherClassSchedule({
-            bimestreNum: metadata.bimestre || 4,
-            calendarData,
-            targetYear: metadata.year ? parseInt(String(metadata.year), 10) : calendarData?.year,
-            classDays: currentDays,
-            classesPerDay: currentClassesPerDay,
-            plannedClasses: Number(metadata.plannedClasses) || 18,
-            rowCount: 11
-          });
-
-          const displacedCount = schedulePreview.filter(s => s.status === 'displaced').length;
-
           return (
-            <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-blue-50/70 via-indigo-50/50 to-slate-50 border-2 border-blue-200/90 shadow-2xs">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2.5 mb-3 border-b border-blue-200/70 gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-lg bg-[#002B49] text-white flex items-center justify-center text-xs font-bold shadow-2xs">
-                    <Clock className="w-3.5 h-3.5 text-amber-300" />
-                  </span>
-                  <div>
-                    <h4 className="text-xs font-extrabold uppercase tracking-wide text-[#002B49] flex items-center gap-1.5">
-                      Grade Horária Semanal & Dias de Aula da Turma
-                    </h4>
-                    <p className="text-[11px] text-slate-600 mt-0.5">
-                      Determina a varredura real do calendário para a <strong>Coluna B (Linha 28 em diante)</strong> com alocação e deslocamento de feriados.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-[11px] font-bold text-blue-900 bg-blue-100/80 px-2 py-0.5 rounded border border-blue-200">
-                    {currentDays.length * currentClassesPerDay} aula{currentDays.length * currentClassesPerDay > 1 ? 's' : ''}/semana
-                  </span>
-                  {displacedCount > 0 && (
-                    <span className="text-[11px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
-                      {displacedCount} aula{displacedCount > 1 ? 's' : ''} deslocada{displacedCount > 1 ? 's' : ''} por feriado
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 items-start">
-                {/* Checkboxes dos Dias da Semana */}
-                <div className="md:col-span-8 bg-white p-3 rounded-xl border border-blue-200 shadow-2xs">
-                  <label className="block text-slate-800 font-extrabold text-xs mb-2 flex items-center justify-between">
-                    <span>Dias da Semana com Aula nesta Turma:</span>
-                    <span className="text-[10px] font-normal text-slate-500">
-                      Selecione um ou mais dias úteis (Segunda a Sexta)
-                    </span>
-                  </label>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                    {WEEKDAYS.map(w => {
-                      const isChecked = currentDays.includes(w.day);
-                      return (
-                        <button
-                          key={w.day}
-                          type="button"
-                          onClick={() => toggleDay(w.day)}
-                          className={`p-2 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between gap-1.5 ${
-                            isChecked
-                              ? 'bg-blue-600 text-white border-blue-700 shadow-xs'
-                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-blue-50/50 hover:border-blue-300'
-                          }`}
-                        >
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${
-                              isChecked
-                                ? 'bg-white border-white text-blue-600'
-                                : 'bg-white border-slate-300'
-                            }`}>
-                              {isChecked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                            </span>
-                            <span className="text-[11px] font-bold truncate">
-                              {w.name}
-                            </span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <span className="text-[10px] text-slate-500 mt-2 block">
-                    Exemplo padrão SEDUC: Aulas às <strong>quintas-feiras (bloco geminado de 2 aulas)</strong>.
-                  </span>
-                </div>
-
-                {/* Seletor de Aulas por Dia */}
-                <div className="md:col-span-4 bg-white p-3 rounded-xl border border-blue-200 shadow-2xs">
-                  <label className="block text-slate-800 font-extrabold text-xs mb-1.5">
-                    Aulas por Dia Letivo:
-                  </label>
-                  <select
-                    value={currentClassesPerDay}
-                    onChange={(e) => handleClassesPerDayChange(parseInt(e.target.value, 10))}
-                    className="w-full bg-slate-50 border-2 border-blue-300 focus:border-[#005A9C] rounded-lg p-2 font-black text-slate-900 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all cursor-pointer text-xs"
-                  >
-                    <option value={1}>1 aula por dia</option>
-                    <option value={2}>2 aulas (bloco geminado) [Padrão]</option>
-                    <option value={3}>3 aulas por dia</option>
-                    <option value={4}>4 aulas por dia</option>
-                  </select>
-                  <div className="mt-2 text-[10px] text-slate-500 leading-tight">
-                    Carga horária acumulada é balanceada no fechamento do bimestre (SEI) para atingir 100% de J8.
-                  </div>
+            <div className="mt-3 pt-2.5 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-bold text-slate-700 text-[11px] flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-blue-700" />
+                  Dias de Aula:
+                </span>
+                <div className="flex items-center gap-1">
+                  {WEEKDAYS.map(w => {
+                    const isChecked = currentDays.includes(w.day);
+                    return (
+                      <button
+                        key={w.day}
+                        type="button"
+                        onClick={() => toggleDay(w.day)}
+                        className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                          isChecked
+                            ? 'bg-[#002B49] text-white shadow-2xs'
+                            : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {w.short}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* Prévia Instantânea do Algoritmo de Alocação e Deslocamento na Coluna B */}
-              <div className="mt-3 p-2.5 bg-white/90 rounded-lg border border-blue-200 text-xs">
-                <div className="flex items-center justify-between mb-1 text-[11px] text-slate-700">
-                  <span className="font-extrabold text-[#002B49] flex items-center gap-1">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                    Prévia do Algoritmo de Alocação (Coluna B):
-                  </span>
-                  <span className="text-[10px] text-slate-500">
-                    Amostra das 3 primeiras semanas e fechamento
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mt-1.5">
-                  {schedulePreview.slice(0, 3).map((sw) => (
-                    <div key={sw.weekNumber} className={`p-1.5 rounded border text-[10px] ${
-                      sw.status === 'suspension'
-                        ? 'bg-red-50 border-red-300 text-red-950 font-bold ring-1 ring-red-200'
-                        : sw.status === 'displaced'
-                        ? 'bg-amber-50 border-amber-300 text-amber-950 font-bold'
-                        : 'bg-slate-50 border-slate-200 text-slate-800'
-                    }`}>
-                      <span className="font-mono font-bold block">{sw.fullDateText}</span>
-                    </div>
-                  ))}
-                  {schedulePreview.length > 3 && (
-                    <div className="p-1.5 rounded border bg-emerald-50 border-emerald-300 text-emerald-950 text-[10px] font-bold">
-                      <span className="font-mono block">
-                        {schedulePreview[schedulePreview.length - 1].fullDateText}
-                      </span>
-                    </div>
-                  )}
-                </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="font-bold text-slate-700 text-[11px]">Aulas/Dia:</span>
+                <select
+                  value={currentClassesPerDay}
+                  onChange={(e) => handleClassesPerDayChange(parseInt(e.target.value, 10))}
+                  className="bg-white border border-slate-200 rounded-md px-2 py-1 font-bold text-slate-800 text-xs cursor-pointer focus:outline-none"
+                >
+                  <option value={1}>1 aula</option>
+                  <option value={2}>2 aulas (bloco geminado)</option>
+                  <option value={3}>3 aulas</option>
+                  <option value={4}>4 aulas</option>
+                </select>
+                <span className="text-[10px] font-bold text-blue-900 bg-blue-100/80 px-2 py-0.5 rounded">
+                  {currentDays.length * currentClassesPerDay} aulas/sem
+                </span>
               </div>
             </div>
           );
         })()}
 
-        {/* PAINEL DESTACADO DE METADADOS CURRICULARES (CÉLULAS J7, J8 e J9) */}
+        {/* Métricas J7, J8 e J9 (Ultra-compactas: 3 cards finos em linha horizontal) */}
         {(() => {
           const metrics = computeSeducCellMetrics({
             bimestre: metadata.bimestre,
@@ -839,129 +714,40 @@ export const UploadSlots: React.FC<UploadSlotsProps> = ({
           });
 
           return (
-            <div className="mt-4 pt-4 border-t border-slate-200/80">
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-extrabold uppercase tracking-wider text-[#002B49] bg-blue-100/70 px-2 py-0.5 rounded border border-blue-200 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-blue-700" />
-                    Sistemática Oficial de Carga Horária e Dias Letivos (Células J7, J8 e J9)
-                  </span>
-                  <span className="text-xs font-bold text-emerald-900 bg-emerald-100/90 px-2.5 py-0.5 rounded-md border border-emerald-300 flex items-center gap-1.5 shadow-2xs">
-                    ✓ Calendário Lido Automaticamente: Ano {metadata.year || calendarData?.year || 2026} • {metadata.bimestre || '4º Bimestre'} ({metrics.startDate} a {metrics.endDate})
-                  </span>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3 pt-2.5 border-t border-slate-200">
+              {/* Card J7: [Número] Dias Letivos */}
+              <div className="bg-white px-3 py-2 rounded-lg border border-blue-200 flex items-center justify-between shadow-2xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono bg-[#002B49] text-white px-1.5 py-0.5 rounded text-[10px] font-bold">J7</span>
+                  <span className="text-xs font-semibold text-slate-700">Dias Letivos</span>
                 </div>
-                <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                  Formatação, cores e estilos originais 100% preservados
-                </span>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-base font-black text-slate-900">{metrics.j7DiasLetivos}</span>
+                  <span className="text-[10px] text-slate-500">dias</span>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {/* Card Célula J7 */}
-                <div className="bg-gradient-to-br from-blue-50/50 to-white p-3.5 rounded-xl border-2 border-blue-200 shadow-2xs relative">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[11px] font-extrabold uppercase tracking-wide text-blue-900 flex items-center gap-1">
-                      <span className="font-mono bg-[#002B49] text-white px-1.5 py-0.5 rounded text-[10px] font-bold">J7</span>
-                      Dias Letivos do Bimestre
-                    </span>
-                    <span className="text-[10px] font-bold text-blue-800 bg-blue-100/90 px-1.5 py-0.5 rounded border border-blue-200">
-                      Seg a Sex (dayOfWeek 1-5)
-                    </span>
-                  </div>
-                  <div className="flex items-baseline gap-2 my-1">
-                    <span className="text-2xl font-black text-slate-900 tracking-tight">
-                      {metrics.j7DiasLetivos}
-                    </span>
-                    <span className="text-xs font-bold text-slate-600">
-                      dias úteis letivos
-                    </span>
-                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/80 px-1.5 py-0.2 rounded border border-emerald-200 ml-auto">
-                      {metrics.weekendDaysIgnoredCount} fins de semana excluídos
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-600 leading-relaxed">
-                    Período oficial: <strong>{metrics.startDate} a {metrics.endDate}</strong> ({metrics.totalCalendarDays} dias corridos). Varredura dia a dia: <strong>{metrics.totalWeekdaysMonFri} dias úteis (seg-sex)</strong>, com <strong>{metrics.weekendDaysIgnoredCount} sábados e domingos rigorosamente ignorados</strong> e desconto de <strong>{metrics.j7FeriadosDescontados.length} feriados/pontes</strong> em dias úteis.
-                  </p>
-                  <div className="mt-2 pt-1.5 border-t border-blue-100 text-[10px] font-semibold text-blue-800 flex items-center justify-between">
-                    <span>Injeção na planilha:</span>
-                    <span className="font-mono font-bold bg-white px-1.5 py-0.5 rounded border border-blue-200 text-blue-950">
-                      Célula J7 = {metrics.j7DiasLetivos} (inteiro)
-                    </span>
-                  </div>
+              {/* Card J8: [Número] Aulas */}
+              <div className="bg-white px-3 py-2 rounded-lg border border-amber-300 flex items-center justify-between shadow-2xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono bg-amber-700 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">J8</span>
+                  <span className="text-xs font-semibold text-slate-700">Aulas</span>
                 </div>
-
-                {/* Card Célula J8 */}
-                <div className="bg-gradient-to-br from-amber-50/50 to-white p-3.5 rounded-xl border-2 border-amber-300 shadow-2xs relative">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[11px] font-extrabold uppercase tracking-wide text-amber-950 flex items-center gap-1">
-                      <span className="font-mono bg-amber-700 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">J8</span>
-                      Aulas Curriculares Previstas
-                    </span>
-                    <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">
-                      Teto Obrigatório
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 my-1">
-                    <select
-                      value={String(metadata.plannedClasses || metrics.j8AulasPrevistas)}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value, 10);
-                        onChangeMetadata({ 
-                          ...metadata, 
-                          plannedClasses: val,
-                          diasLetivos: metrics.j7DiasLetivos,
-                          diasEfetivos: metrics.j9DiasEfetivos
-                        });
-                      }}
-                      className="bg-white border-2 border-amber-400 focus:border-amber-600 rounded-lg p-1.5 text-base font-black text-amber-950 focus:ring-2 focus:ring-amber-200 focus:outline-none cursor-pointer"
-                    >
-                      <option value="18">18 Aulas (9 Semanas letivas de regência)</option>
-                      <option value="16">16 Aulas (8 Semanas de currículo base)</option>
-                      <option value="14">14 Aulas (se o curso for semestral/módulo reduzido)</option>
-                      <option value="12">12 Aulas (se o curso for semestral/módulo reduzido)</option>
-                    </select>
-                    <span className="text-xs font-bold text-amber-900">
-                      ({metrics.j8TotalSemanas} semanas)
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-600 leading-relaxed">
-                    Carga horária para <strong>{metadata.subject || 'Química'} ({metadata.grade || '1ª Série EM'})</strong>. O valor de J8 define o encerramento estrito da grade semanal sem aulas fantasmas.
-                  </p>
-                  <div className="mt-2 pt-1.5 border-t border-amber-200 text-[10px] font-semibold text-amber-900 flex items-center justify-between">
-                    <span>Injeção na planilha:</span>
-                    <span className="font-mono font-bold bg-white px-1.5 py-0.5 rounded border border-amber-300">
-                      Célula J8 = {metrics.j8AulasPrevistas}
-                    </span>
-                  </div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-base font-black text-amber-950">{metadata.plannedClasses || metrics.j8AulasPrevistas}</span>
+                  <span className="text-[10px] text-slate-500">previstas</span>
                 </div>
+              </div>
 
-                {/* Card Célula J9 */}
-                <div className="bg-gradient-to-br from-emerald-50/50 to-white p-3.5 rounded-xl border-2 border-emerald-300 shadow-2xs relative">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[11px] font-extrabold uppercase tracking-wide text-emerald-950 flex items-center gap-1">
-                      <span className="font-mono bg-emerald-700 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">J9</span>
-                      Dias Letivos Efetivos
-                    </span>
-                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">
-                      Desconto de Eventos
-                    </span>
-                  </div>
-                  <div className="flex items-baseline gap-2 my-1">
-                    <span className="text-2xl font-black text-slate-900 tracking-tight">
-                      {metrics.j9DiasEfetivos}
-                    </span>
-                    <span className="text-xs font-bold text-slate-600">
-                      dias efetivos de aula
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-600 leading-relaxed">
-                    Base J7 ({metrics.j7DiasLetivos}) menos <strong>{metrics.j9EventosDescontados.reduce((a, b) => a + b.dias, 0)} dias de eventos</strong> (Planejamento, Conselhos, Provas exclusivas e Feiras).
-                  </p>
-                  <div className="mt-2 pt-1.5 border-t border-emerald-200 text-[10px] font-semibold text-emerald-900 flex items-center justify-between">
-                    <span>Injeção na planilha:</span>
-                    <span className="font-mono font-bold bg-white px-1.5 py-0.5 rounded border border-emerald-300">
-                      Célula J9 = {metrics.j9DiasEfetivos}
-                    </span>
-                  </div>
+              {/* Card J9: [Número] Efetivos */}
+              <div className="bg-white px-3 py-2 rounded-lg border border-emerald-300 flex items-center justify-between shadow-2xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono bg-emerald-700 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">J9</span>
+                  <span className="text-xs font-semibold text-slate-700">Efetivos</span>
+                </div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-base font-black text-emerald-950">{metrics.j9DiasEfetivos}</span>
+                  <span className="text-[10px] text-slate-500">dias</span>
                 </div>
               </div>
             </div>
@@ -970,17 +756,17 @@ export const UploadSlots: React.FC<UploadSlotsProps> = ({
       </div>
 
       {/* Action Bar */}
-      <div className="mt-8 pt-5 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="mt-4 pt-3.5 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="text-xs text-slate-500">
           {!allSlotsFilled ? (
             <span className="flex items-center gap-1.5 text-amber-600 font-medium">
-              <AlertCircle className="w-4 h-4" />
-              Faça o upload dos 3 arquivos obrigatórios para iniciar o treinamento de coordenadas.
+              <AlertCircle className="w-3.5 h-3.5" />
+              Faça o upload dos 3 arquivos para prosseguir.
             </span>
           ) : (
             <span className="flex items-center gap-1.5 text-emerald-700 font-semibold">
-              <FileCheck className="w-4 h-4" />
-              Os 3 slots estão prontos para o treinamento de coordenadas!
+              <FileCheck className="w-3.5 h-3.5" />
+              Slots validados e prontos!
             </span>
           )}
         </div>
@@ -988,20 +774,20 @@ export const UploadSlots: React.FC<UploadSlotsProps> = ({
         <button
           onClick={onProceedToMapping}
           disabled={!allSlotsFilled || isParsing}
-          className={`w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer ${
+          className={`w-full sm:w-auto px-5 py-2.5 rounded-lg font-bold text-xs flex items-center justify-center gap-2 shadow-2xs transition-all cursor-pointer ${
             allSlotsFilled && !isParsing
-              ? 'bg-[#002B49] hover:bg-[#003B65] text-white hover:shadow-md'
+              ? 'bg-[#002B49] hover:bg-[#003B65] text-white'
               : 'bg-slate-200 text-slate-400 cursor-not-allowed'
           }`}
         >
           {isParsing ? (
             <>
-              <RefreshCw className="w-4 h-4 animate-spin" />
-              Inspecionando Planilha...
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              Inspecionando...
             </>
           ) : (
             <>
-              Avançar para Configuração / Treinamento do Modelo →
+              Avançar para Células →
             </>
           )}
         </button>

@@ -73,9 +73,9 @@ export const DEFAULT_PROFILES: CellMapProfile[] = [
       dateWeekCol: 'B',       // Data / Semana
       skillCol: 'D',          // Habilidade / AE / Aula
       objectivesCol: 'E',     // Objetivos de Aprendizagem
-      methodologyCol: 'F',    // Metodologia
+      methodologyCol: 'NONE', // Metodologia (DESATIVADA / VAZIA)
       developmentCol: 'G',    // Desenvolvimento da Aula
-      assessmentCol: 'H',     // Avaliação
+      assessmentCol: 'NONE',  // Avaliação (DESATIVADA / VAZIA)
       recoveryCol: 'I',       // Ajustes / Recuperação
     },
     headerFields: {

@@ -20,7 +20,9 @@ import {
   Check,
   Sparkles,
   FileText,
-  Clock
+  Clock,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { CellMapProfile, ExpectedFieldType, InjectionMode } from '../types/plan';
 import { SheetRowPreview, normalizeColLetter, normalizeCoordinate, isColumnDisabled } from '../utils/fileEngine';
@@ -53,6 +55,25 @@ export const TrainingWizard: React.FC<TrainingWizardProps> = ({
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
   const [customProfileName, setCustomProfileName] = useState('');
   const [showSaveModal, setShowSaveModal] = useState(false);
+
+  // Accordion state (default only accordion 1 open)
+  const [openAccordions, setOpenAccordions] = useState<{
+    dim: boolean;
+    schedule: boolean;
+    columns: boolean;
+    headerAndCells: boolean;
+    advancedMenu: boolean;
+  }>({
+    dim: true,
+    schedule: false,
+    columns: false,
+    headerAndCells: false,
+    advancedMenu: false
+  });
+
+  const toggleAccordion = (key: keyof typeof openAccordions) => {
+    setOpenAccordions(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   // Selected cell in the interactive preview
   const [selectedCellInfo, setSelectedCellInfo] = useState<{
@@ -251,26 +272,62 @@ export const TrainingWizard: React.FC<TrainingWizardProps> = ({
     return Object.values(profile.headerFields || {}).some(h => normalizeCoordinate(h) === safeAddress);
   };
 
+  const currentDays = Array.isArray(profile.classDays) && profile.classDays.length > 0
+    ? profile.classDays
+    : [4];
+  const currentClassesPerDay = Number(profile.classesPerDay) >= 1 && Number(profile.classesPerDay) <= 4
+    ? Number(profile.classesPerDay)
+    : 2;
+
+  const WEEKDAYS = [
+    { day: 1, name: 'Seg', fullName: 'Segunda-feira' },
+    { day: 2, name: 'Ter', fullName: 'Terça-feira' },
+    { day: 3, name: 'Qua', fullName: 'Quarta-feira' },
+    { day: 4, name: 'Qui', fullName: 'Quinta-feira' },
+    { day: 5, name: 'Sex', fullName: 'Sexta-feira' },
+  ];
+
+  const toggleDay = (dNum: number) => {
+    let nextDays: number[];
+    if (currentDays.includes(dNum)) {
+      nextDays = currentDays.filter(d => d !== dNum);
+      if (nextDays.length === 0) nextDays = [dNum];
+    } else {
+      nextDays = [...currentDays, dNum].sort((a, b) => a - b);
+    }
+    setProfile(prev => ({
+      ...prev,
+      classDays: nextDays,
+      classesPerDay: currentClassesPerDay,
+      teacherSchedule: { classDays: nextDays, classesPerDay: currentClassesPerDay }
+    }));
+  };
+
+  const setClassesCount = (cnt: number) => {
+    setProfile(prev => ({
+      ...prev,
+      classesPerDay: cnt,
+      teacherSchedule: { classDays: currentDays, classesPerDay: cnt }
+    }));
+  };
+
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5">
       {/* Header with Title and Mode */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between pb-5 border-b border-slate-100 gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3.5 border-b border-slate-100 gap-3">
         <div>
           <div className="flex items-center gap-2">
             <span className="w-7 h-7 rounded-lg bg-[#002B49] text-amber-400 flex items-center justify-center font-bold text-sm shadow-xs">
               <Cpu className="w-4 h-4" />
             </span>
-            <h2 className="text-lg font-extrabold text-slate-900 flex items-center gap-2 flex-wrap">
-              Mapeamento de Células & Células Mescladas
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+            <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2 flex-wrap">
+              Mapeamento de Células
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
                 <Unlock className="w-3 h-3 text-emerald-600" />
-                Mapeamento Livre • Sem Bloqueios
+                Livre
               </span>
             </h2>
           </div>
-          <p className="text-sm text-slate-500 mt-1">
-            <strong>Nenhuma célula está bloqueada.</strong> Clique diretamente em qualquer célula da prévia para mapeá-la. Células mescladas (merged cells) são detectadas e gerenciadas automaticamente.
-          </p>
         </div>
 
         {/* Profile Controls */}
@@ -280,7 +337,7 @@ export const TrainingWizard: React.FC<TrainingWizardProps> = ({
             <select
               value={profile.id}
               onChange={(e) => handleProfileChange(e.target.value)}
-              className="bg-transparent text-xs font-bold text-slate-800 py-1.5 px-2 pr-6 rounded-lg focus:outline-none cursor-pointer"
+              className="bg-transparent text-xs font-bold text-slate-800 py-1 px-2 pr-6 rounded-lg focus:outline-none cursor-pointer"
             >
               {savedProfiles.map(p => (
                 <option key={p.id} value={p.id}>
@@ -292,7 +349,7 @@ export const TrainingWizard: React.FC<TrainingWizardProps> = ({
 
           <button
             onClick={handleResetToUreTaubate}
-            className="px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+            className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
             title="Carregar configuração padrão URE Taubaté"
           >
             <RotateCcw className="w-3.5 h-3.5" /> Padrão URE Taubaté
@@ -300,167 +357,138 @@ export const TrainingWizard: React.FC<TrainingWizardProps> = ({
 
           <button
             onClick={handleSaveCurrentProfile}
-            className="px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+            className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
           >
             <Save className="w-3.5 h-3.5" /> Salvar Perfil
           </button>
 
           <button
             onClick={() => setShowSaveModal(true)}
-            className="px-3 py-2 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+            className="px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
           >
-            <Bookmark className="w-3.5 h-3.5 text-amber-600" /> Salvar Como Novo...
+            <Bookmark className="w-3.5 h-3.5 text-amber-600" /> Salvar Como...
           </button>
         </div>
       </div>
 
       {/* Notification banner */}
       {saveSuccessMsg && (
-        <div className="mt-4 p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-xs text-emerald-800 font-semibold flex items-center gap-2 animate-in fade-in">
+        <div className="mt-3 p-2.5 bg-emerald-50 border border-emerald-300 rounded-xl text-xs text-emerald-800 font-semibold flex items-center gap-2 animate-in fade-in">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
           {saveSuccessMsg}
         </div>
       )}
 
-      {/* Freedom & Merged Cell Support Info Banner */}
-      <div className="mt-4 p-3.5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex items-start sm:items-center gap-2.5">
-          <Combine className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5 sm:mt-0" />
-          <div className="text-xs text-blue-950">
-            <span className="font-bold">Suporte Pleno a Células Mescladas:</span> Ao selecionar qualquer célula mesclada (ex.: <strong>B13:I13</strong> ou <strong>D4:F4</strong>), o robô identifica a célula mestre e injeta os dados respeitando 100% da área mesclada e sua formatação.
-          </div>
-        </div>
-
-        {profile.skipRows && profile.skipRows.length > 0 && (
-          <button
-            onClick={handleClearAllBlockedRows}
-            className="text-xs font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-lg border border-amber-300 flex items-center gap-1 cursor-pointer shrink-0"
-          >
-            <Unlock className="w-3.5 h-3.5" /> Desbloquear Todas as Linhas
-          </button>
-        )}
-      </div>
-
-      {/* Main Grid: Left Configuration & Right Click-to-Map Matrix */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
-        {/* Left Column: Coordinates Form & Free Mapper (6 cols) */}
-        <div className="lg:col-span-6 space-y-6">
-          {/* Card 1: Aba e Linhas */}
-          <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
-            <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-2 mb-3">
-              <Layers className="w-4 h-4 text-[#002B49]" />
-              1. Localização e Dimensão da Grade
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-              <div>
-                <label className="block text-slate-600 font-semibold mb-1">
-                  Aba Alvo da Planilha:
-                </label>
-                <select
-                  value={profile.targetSheet}
-                  onChange={(e) => setProfile({ ...profile, targetSheet: e.target.value })}
-                  className="w-full bg-white border border-slate-300 rounded-lg p-2 font-medium text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                >
-                  {availableSheets.map(s => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                  {!availableSheets.includes(profile.targetSheet) && (
-                    <option value={profile.targetSheet}>{profile.targetSheet}</option>
-                  )}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-slate-600 font-semibold mb-1">
-                  Linha Inicial dos Dados:
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="100"
-                  value={profile.startRow}
-                  onChange={(e) => setProfile({ ...profile, startRow: parseInt(e.target.value, 10) || 16 })}
-                  className="w-full bg-white border border-slate-300 rounded-lg p-2 font-bold text-blue-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                />
-                <span className="text-[10px] text-slate-400 mt-0.5 block">
-                  Linha onde começam as aulas (ex: 13 ou 16)
+      {/* Main Grid: Left Accordions & Right Click-to-Map Matrix */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 mt-4">
+        {/* Left Column: 4 Collapsible Accordions (6 cols) */}
+        <div className="lg:col-span-6 space-y-3">
+          {/* Accordion 1: Dimensão da Grade */}
+          <div className="border border-slate-200 rounded-xl bg-slate-50/50 shadow-2xs overflow-hidden transition-all">
+            <button
+              type="button"
+              onClick={() => toggleAccordion('dim')}
+              className="w-full flex items-center justify-between p-3.5 text-left transition-colors hover:bg-slate-100/60 cursor-pointer select-none"
+            >
+              <div className="flex items-center gap-2">
+                <Layers className="w-4 h-4 text-[#002B49]" />
+                <span className="text-xs font-extrabold uppercase tracking-wider text-slate-800">
+                  1. Dimensão da Grade
                 </span>
               </div>
-
-              <div>
-                <label className="block text-slate-600 font-semibold mb-1">
-                  Quantidade de Semanas / Aulas:
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="50"
-                  value={profile.rowCount}
-                  onChange={(e) => setProfile({ ...profile, rowCount: parseInt(e.target.value, 10) || 10 })}
-                  className="w-full bg-white border border-slate-300 rounded-lg p-2 font-bold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                />
-                <span className="text-[10px] text-slate-400 mt-0.5 block">
-                  Número de linhas da grade semanal
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-mono text-slate-500 font-semibold hidden sm:inline">
+                  {profile.targetSheet} • Linha {profile.startRow} • {profile.rowCount} sem.
                 </span>
+                {openAccordions.dim ? (
+                  <ChevronUp className="w-4 h-4 text-slate-500" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-slate-500" />
+                )}
               </div>
-            </div>
-          </div>
+            </button>
 
-          {/* Card 1.1: Grade Horária e Dias de Aula da Turma (Salvo no Perfil) */}
-          {(() => {
-            const currentDays = Array.isArray(profile.classDays) && profile.classDays.length > 0
-              ? profile.classDays
-              : [4];
-            const currentClassesPerDay = Number(profile.classesPerDay) >= 1 && Number(profile.classesPerDay) <= 4
-              ? Number(profile.classesPerDay)
-              : 2;
+            {openAccordions.dim && (
+              <div className="p-3.5 pt-0 border-t border-slate-200/70 mt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-2">
+                  <div>
+                    <label className="block text-slate-600 font-semibold mb-1">
+                      Aba Alvo:
+                    </label>
+                    <select
+                      value={profile.targetSheet}
+                      onChange={(e) => setProfile({ ...profile, targetSheet: e.target.value })}
+                      className="w-full bg-white border border-slate-300 rounded-lg p-2 font-medium text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    >
+                      {availableSheets.map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                      {!availableSheets.includes(profile.targetSheet) && (
+                        <option value={profile.targetSheet}>{profile.targetSheet}</option>
+                      )}
+                    </select>
+                  </div>
 
-            const WEEKDAYS = [
-              { day: 1, name: 'Seg', fullName: 'Segunda-feira' },
-              { day: 2, name: 'Ter', fullName: 'Terça-feira' },
-              { day: 3, name: 'Qua', fullName: 'Quarta-feira' },
-              { day: 4, name: 'Qui', fullName: 'Quinta-feira' },
-              { day: 5, name: 'Sex', fullName: 'Sexta-feira' },
-            ];
+                  <div>
+                    <label className="block text-slate-600 font-semibold mb-1">
+                      Linha Inicial:
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={profile.startRow}
+                      onChange={(e) => setProfile({ ...profile, startRow: parseInt(e.target.value, 10) || 16 })}
+                      className="w-full bg-white border border-slate-300 rounded-lg p-2 font-bold text-blue-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                  </div>
 
-            const toggleDay = (dNum: number) => {
-              let nextDays: number[];
-              if (currentDays.includes(dNum)) {
-                nextDays = currentDays.filter(d => d !== dNum);
-                if (nextDays.length === 0) nextDays = [dNum];
-              } else {
-                nextDays = [...currentDays, dNum].sort((a, b) => a - b);
-              }
-              setProfile(prev => ({
-                ...prev,
-                classDays: nextDays,
-                classesPerDay: currentClassesPerDay,
-                teacherSchedule: { classDays: nextDays, classesPerDay: currentClassesPerDay }
-              }));
-            };
-
-            const setClassesCount = (cnt: number) => {
-              setProfile(prev => ({
-                ...prev,
-                classesPerDay: cnt,
-                teacherSchedule: { classDays: currentDays, classesPerDay: cnt }
-              }));
-            };
-
-            return (
-              <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-[#002B49]" />
-                    Grade Horária da Turma (Salva no Perfil)
-                  </h3>
-                  <span className="text-[10px] font-bold text-blue-900 bg-blue-100 px-2 py-0.5 rounded border border-blue-200">
-                    {currentDays.length * currentClassesPerDay} aula{currentDays.length * currentClassesPerDay > 1 ? 's' : ''}/semana
-                  </span>
+                  <div>
+                    <label className="block text-slate-600 font-semibold mb-1">
+                      Qtd Semanas:
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="50"
+                      value={profile.rowCount}
+                      onChange={(e) => setProfile({ ...profile, rowCount: parseInt(e.target.value, 10) || 10 })}
+                      className="w-full bg-white border border-slate-300 rounded-lg p-2 font-bold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                  </div>
                 </div>
+              </div>
+            )}
+          </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 text-xs items-center">
+          {/* Accordion 2: Grade Horária */}
+          <div className="border border-slate-200 rounded-xl bg-slate-50/50 shadow-2xs overflow-hidden transition-all">
+            <button
+              type="button"
+              onClick={() => toggleAccordion('schedule')}
+              className="w-full flex items-center justify-between p-3.5 text-left transition-colors hover:bg-slate-100/60 cursor-pointer select-none"
+            >
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-[#002B49]" />
+                <span className="text-xs font-extrabold uppercase tracking-wider text-slate-800">
+                  2. Grade Horária
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-blue-900 bg-blue-100 px-2 py-0.5 rounded border border-blue-200">
+                  {currentDays.length * currentClassesPerDay} aula{currentDays.length * currentClassesPerDay > 1 ? 's' : ''}/sem
+                </span>
+                {openAccordions.schedule ? (
+                  <ChevronUp className="w-4 h-4 text-slate-500" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-slate-500" />
+                )}
+              </div>
+            </button>
+
+            {openAccordions.schedule && (
+              <div className="p-3.5 pt-0 border-t border-slate-200/70 mt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 text-xs items-center pt-2">
                   <div className="sm:col-span-8">
                     <label className="block text-slate-600 font-semibold mb-1 text-[11px]">
                       Dias da Semana com Aula:
@@ -504,500 +532,541 @@ export const TrainingWizard: React.FC<TrainingWizardProps> = ({
                   </div>
                 </div>
               </div>
-            );
-          })()}
+            )}
+          </div>
 
-          {/* Card 2: Colunas da Grade Semanal */}
-          <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
-            <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-700 flex items-center justify-between mb-3">
-              <span className="flex items-center gap-2">
+          {/* Accordion 3: Colunas da Grade (B, D, E, G, I) */}
+          <div className="border border-slate-200 rounded-xl bg-slate-50/50 shadow-2xs overflow-hidden transition-all">
+            <button
+              type="button"
+              onClick={() => toggleAccordion('columns')}
+              className="w-full flex items-center justify-between p-3.5 text-left transition-colors hover:bg-slate-100/60 cursor-pointer select-none"
+            >
+              <div className="flex items-center gap-2">
                 <Table className="w-4 h-4 text-[#002B49]" />
-                2. Colunas da Grade Semanal (B, D, E, F, G, H, I)
-              </span>
-              <span className="text-[10px] text-slate-400 font-normal">
-                Clique nas células à direita para alterar rapidamente
-              </span>
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              {/* Coluna B: Data/Semana */}
-              <div className={`p-2.5 rounded-lg border shadow-2xs transition-all ${
-                isColumnDisabled(profile.columns?.dateWeekCol)
-                  ? 'bg-amber-50/60 border-amber-300'
-                  : 'bg-white border-slate-200'
-              }`}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-bold text-slate-800">Data / Semana:</span>
-                  <select
-                    value={isColumnDisabled(profile.columns?.dateWeekCol) ? 'NONE' : (normalizeColLetter(profile.columns?.dateWeekCol) || 'B')}
-                    onChange={(e) => setProfile({
-                      ...profile,
-                      columns: { ...profile.columns, dateWeekCol: e.target.value === 'NONE' ? 'NONE' : normalizeColLetter(e.target.value) }
-                    })}
-                    className={`font-mono font-bold rounded px-2 py-0.5 text-xs border ${
-                      isColumnDisabled(profile.columns?.dateWeekCol)
-                        ? 'bg-amber-100 text-amber-900 border-amber-300'
-                        : 'bg-blue-50 text-blue-700 border-blue-200'
-                    }`}
-                  >
-                    <option value="NONE">[-- Em Branco / Desativada --]</option>
-                    {COLUMN_LETTERS.map(l => (
-                      <option key={l} value={l}>Coluna {l}</option>
-                    ))}
-                  </select>
-                </div>
-                {isColumnDisabled(profile.columns?.dateWeekCol) ? (
-                  <span className="text-[10px] font-bold text-amber-800 bg-amber-100/70 px-1.5 py-0.5 rounded border border-amber-200">
-                    Desativada • Sem preenchimento
-                  </span>
-                ) : (
-                  <span className="text-[10px] text-slate-400">Padrão URE Taubaté: Coluna B</span>
-                )}
-              </div>
-
-              {/* Coluna D: Habilidade / AE / Aula */}
-              <div className={`p-2.5 rounded-lg border shadow-2xs transition-all ${
-                isColumnDisabled(profile.columns?.skillCol)
-                  ? 'bg-amber-50/60 border-amber-300'
-                  : 'bg-white border-slate-200'
-              }`}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-bold text-slate-800">Habilidade / AE / Aula:</span>
-                  <select
-                    value={isColumnDisabled(profile.columns?.skillCol) ? 'NONE' : (normalizeColLetter(profile.columns?.skillCol) || 'D')}
-                    onChange={(e) => setProfile({
-                      ...profile,
-                      columns: { ...profile.columns, skillCol: e.target.value === 'NONE' ? 'NONE' : normalizeColLetter(e.target.value) }
-                    })}
-                    className={`font-mono font-bold rounded px-2 py-0.5 text-xs border ${
-                      isColumnDisabled(profile.columns?.skillCol)
-                        ? 'bg-amber-100 text-amber-900 border-amber-300'
-                        : 'bg-blue-50 text-blue-700 border-blue-200'
-                    }`}
-                  >
-                    <option value="NONE">[-- Em Branco / Desativada --]</option>
-                    {COLUMN_LETTERS.map(l => (
-                      <option key={l} value={l}>Coluna {l}</option>
-                    ))}
-                  </select>
-                </div>
-                {isColumnDisabled(profile.columns?.skillCol) ? (
-                  <span className="text-[10px] font-bold text-amber-800 bg-amber-100/70 px-1.5 py-0.5 rounded border border-amber-200">
-                    Desativada • Sem preenchimento
-                  </span>
-                ) : (
-                  <span className="text-[10px] text-slate-400">Padrão URE Taubaté: Coluna D</span>
-                )}
-              </div>
-
-              {/* Coluna E: Objetivos de Aprendizagem */}
-              <div className={`p-2.5 rounded-lg border shadow-2xs transition-all ${
-                isColumnDisabled(profile.columns?.objectivesCol)
-                  ? 'bg-amber-50/60 border-amber-300'
-                  : 'bg-white border-slate-200'
-              }`}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-bold text-slate-800">Objetivos de Aprendizagem:</span>
-                  <select
-                    value={isColumnDisabled(profile.columns?.objectivesCol) ? 'NONE' : (normalizeColLetter(profile.columns?.objectivesCol) || 'E')}
-                    onChange={(e) => setProfile({
-                      ...profile,
-                      columns: { ...profile.columns, objectivesCol: e.target.value === 'NONE' ? 'NONE' : normalizeColLetter(e.target.value) }
-                    })}
-                    className={`font-mono font-bold rounded px-2 py-0.5 text-xs border ${
-                      isColumnDisabled(profile.columns?.objectivesCol)
-                        ? 'bg-amber-100 text-amber-900 border-amber-300'
-                        : 'bg-blue-50 text-blue-700 border-blue-200'
-                    }`}
-                  >
-                    <option value="NONE">[-- Em Branco / Desativada --]</option>
-                    {COLUMN_LETTERS.map(l => (
-                      <option key={l} value={l}>Coluna {l}</option>
-                    ))}
-                  </select>
-                </div>
-                {isColumnDisabled(profile.columns?.objectivesCol) ? (
-                  <span className="text-[10px] font-bold text-amber-800 bg-amber-100/70 px-1.5 py-0.5 rounded border border-amber-200">
-                    Desativada • Sem preenchimento
-                  </span>
-                ) : (
-                  <span className="text-[10px] text-slate-400">Padrão URE Taubaté: Coluna E</span>
-                )}
-              </div>
-
-              {/* Coluna F: Metodologia */}
-              <div className={`p-2.5 rounded-lg border shadow-2xs transition-all ${
-                isColumnDisabled(profile.columns?.methodologyCol)
-                  ? 'bg-amber-50/60 border-amber-300 ring-1 ring-amber-200'
-                  : 'bg-white border-slate-200'
-              }`}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-bold text-slate-800">Metodologia:</span>
-                  <select
-                    value={isColumnDisabled(profile.columns?.methodologyCol) ? 'NONE' : (normalizeColLetter(profile.columns?.methodologyCol) || 'F')}
-                    onChange={(e) => setProfile({
-                      ...profile,
-                      columns: { ...profile.columns, methodologyCol: e.target.value === 'NONE' ? 'NONE' : normalizeColLetter(e.target.value) }
-                    })}
-                    className={`font-mono font-bold rounded px-2 py-0.5 text-xs border ${
-                      isColumnDisabled(profile.columns?.methodologyCol)
-                        ? 'bg-amber-100 text-amber-900 border-amber-300'
-                        : 'bg-blue-50 text-blue-700 border-blue-200'
-                    }`}
-                  >
-                    <option value="NONE">[-- Em Branco / Desativada --]</option>
-                    {COLUMN_LETTERS.map(l => (
-                      <option key={l} value={l}>Coluna {l}</option>
-                    ))}
-                  </select>
-                </div>
-                {isColumnDisabled(profile.columns?.methodologyCol) ? (
-                  <span className="text-[10px] font-bold text-amber-800 bg-amber-100/70 px-1.5 py-0.5 rounded border border-amber-200">
-                    Desativada • Sem preenchimento
-                  </span>
-                ) : (
-                  <span className="text-[10px] text-slate-400">Padrão URE Taubaté: Coluna F</span>
-                )}
-              </div>
-
-              {/* Coluna G: Desenvolvimento da Aula */}
-              <div className={`p-2.5 rounded-lg border shadow-2xs transition-all ${
-                isColumnDisabled(profile.columns?.developmentCol)
-                  ? 'bg-amber-50/60 border-amber-300'
-                  : 'bg-white border-slate-200'
-              }`}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-bold text-slate-800">Desenvolvimento da Aula:</span>
-                  <select
-                    value={isColumnDisabled(profile.columns?.developmentCol) ? 'NONE' : (normalizeColLetter(profile.columns?.developmentCol) || 'G')}
-                    onChange={(e) => setProfile({
-                      ...profile,
-                      columns: { ...profile.columns, developmentCol: e.target.value === 'NONE' ? 'NONE' : normalizeColLetter(e.target.value) }
-                    })}
-                    className={`font-mono font-bold rounded px-2 py-0.5 text-xs border ${
-                      isColumnDisabled(profile.columns?.developmentCol)
-                        ? 'bg-amber-100 text-amber-900 border-amber-300'
-                        : 'bg-blue-50 text-blue-700 border-blue-200'
-                    }`}
-                  >
-                    <option value="NONE">[-- Em Branco / Desativada --]</option>
-                    {COLUMN_LETTERS.map(l => (
-                      <option key={l} value={l}>Coluna {l}</option>
-                    ))}
-                  </select>
-                </div>
-                {isColumnDisabled(profile.columns?.developmentCol) ? (
-                  <span className="text-[10px] font-bold text-amber-800 bg-amber-100/70 px-1.5 py-0.5 rounded border border-amber-200">
-                    Desativada • Sem preenchimento
-                  </span>
-                ) : (
-                  <span className="text-[10px] text-slate-400">Padrão URE Taubaté: Coluna G</span>
-                )}
-              </div>
-
-              {/* Coluna H: Avaliação */}
-              <div className={`p-2.5 rounded-lg border shadow-2xs transition-all ${
-                isColumnDisabled(profile.columns?.assessmentCol)
-                  ? 'bg-amber-50/60 border-amber-300 ring-1 ring-amber-200'
-                  : 'bg-white border-slate-200'
-              }`}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-bold text-slate-800">Avaliação da Aprendizagem:</span>
-                  <select
-                    value={isColumnDisabled(profile.columns?.assessmentCol) ? 'NONE' : (normalizeColLetter(profile.columns?.assessmentCol) || 'H')}
-                    onChange={(e) => setProfile({
-                      ...profile,
-                      columns: { ...profile.columns, assessmentCol: e.target.value === 'NONE' ? 'NONE' : normalizeColLetter(e.target.value) }
-                    })}
-                    className={`font-mono font-bold rounded px-2 py-0.5 text-xs border ${
-                      isColumnDisabled(profile.columns?.assessmentCol)
-                        ? 'bg-amber-100 text-amber-900 border-amber-300'
-                        : 'bg-blue-50 text-blue-700 border-blue-200'
-                    }`}
-                  >
-                    <option value="NONE">[-- Em Branco / Desativada --]</option>
-                    {COLUMN_LETTERS.map(l => (
-                      <option key={l} value={l}>Coluna {l}</option>
-                    ))}
-                  </select>
-                </div>
-                {isColumnDisabled(profile.columns?.assessmentCol) ? (
-                  <span className="text-[10px] font-bold text-amber-800 bg-amber-100/70 px-1.5 py-0.5 rounded border border-amber-200">
-                    Desativada • Sem preenchimento
-                  </span>
-                ) : (
-                  <span className="text-[10px] text-slate-400">Padrão URE Taubaté: Coluna H</span>
-                )}
-              </div>
-
-              {/* Coluna I: Ajustes / Recuperação */}
-              <div className={`p-2.5 rounded-lg border shadow-2xs sm:col-span-2 transition-all ${
-                isColumnDisabled(profile.columns?.recoveryCol)
-                  ? 'bg-amber-50/60 border-amber-300 ring-1 ring-amber-200'
-                  : 'bg-white border-slate-200'
-              }`}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-bold text-slate-800">Ajustes Pedagógicos / Recuperação (SEI):</span>
-                  <select
-                    value={isColumnDisabled(profile.columns?.recoveryCol) ? 'NONE' : (normalizeColLetter(profile.columns?.recoveryCol) || 'I')}
-                    onChange={(e) => setProfile({
-                      ...profile,
-                      columns: { ...profile.columns, recoveryCol: e.target.value === 'NONE' ? 'NONE' : normalizeColLetter(e.target.value) }
-                    })}
-                    className={`font-mono font-bold rounded px-2 py-0.5 text-xs border ${
-                      isColumnDisabled(profile.columns?.recoveryCol)
-                        ? 'bg-amber-100 text-amber-900 border-amber-300'
-                        : 'bg-amber-50 text-amber-800 border-amber-200'
-                    }`}
-                  >
-                    <option value="NONE">[-- Em Branco / Desativada --]</option>
-                    {COLUMN_LETTERS.map(l => (
-                      <option key={l} value={l}>Coluna {l}</option>
-                    ))}
-                  </select>
-                </div>
-                {isColumnDisabled(profile.columns?.recoveryCol) ? (
-                  <span className="text-[10px] font-bold text-amber-800 bg-amber-100/70 px-1.5 py-0.5 rounded border border-amber-200">
-                    Desativada • Sem preenchimento
-                  </span>
-                ) : (
-                  <span className="text-[10px] text-slate-400">Padrão URE Taubaté: Coluna I</span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Card 3: Cabeçalho Fixo (Identificação) */}
-          <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
-            <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-700 flex items-center justify-between mb-3">
-              <span className="flex items-center gap-2">
-                <Sliders className="w-4 h-4 text-[#002B49]" />
-                3. Coordenadas do Cabeçalho Fixo (Identificação)
-              </span>
-              <span className="text-[10px] text-slate-400 font-normal">
-                Células onde o nome da Escola, Docente e Disciplina serão gravados
-              </span>
-            </h3>
-
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
-              <div>
-                <label className="block text-slate-600 font-medium mb-1">Unidade Escolar:</label>
-                <input
-                  type="text"
-                  value={normalizeCoordinate(profile.headerFields?.schoolCell || 'D4')}
-                  onChange={(e) => setProfile({
-                    ...profile,
-                    headerFields: { ...profile.headerFields, schoolCell: normalizeCoordinate(e.target.value) }
-                  })}
-                  className="w-full bg-white border border-slate-300 rounded p-1.5 font-mono font-bold text-slate-800 text-center"
-                  placeholder="D4"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-600 font-medium mb-1">Professor(a):</label>
-                <input
-                  type="text"
-                  value={normalizeCoordinate(profile.headerFields?.teacherCell || 'D5')}
-                  onChange={(e) => setProfile({
-                    ...profile,
-                    headerFields: { ...profile.headerFields, teacherCell: normalizeCoordinate(e.target.value) }
-                  })}
-                  className="w-full bg-white border border-slate-300 rounded p-1.5 font-mono font-bold text-slate-800 text-center"
-                  placeholder="D5"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-600 font-medium mb-1">Disciplina:</label>
-                <input
-                  type="text"
-                  value={normalizeCoordinate(profile.headerFields?.subjectCell || 'D6')}
-                  onChange={(e) => setProfile({
-                    ...profile,
-                    headerFields: { ...profile.headerFields, subjectCell: normalizeCoordinate(e.target.value) }
-                  })}
-                  className="w-full bg-white border border-slate-300 rounded p-1.5 font-mono font-bold text-slate-800 text-center"
-                  placeholder="D6"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-600 font-medium mb-1">Turma / Série:</label>
-                <input
-                  type="text"
-                  value={normalizeCoordinate(profile.headerFields?.gradeCell || 'H5')}
-                  onChange={(e) => setProfile({
-                    ...profile,
-                    headerFields: { ...profile.headerFields, gradeCell: normalizeCoordinate(e.target.value) }
-                  })}
-                  className="w-full bg-white border border-slate-300 rounded p-1.5 font-mono font-bold text-slate-800 text-center"
-                  placeholder="H5"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-600 font-medium mb-1">Bimestre:</label>
-                <input
-                  type="text"
-                  value={normalizeCoordinate(profile.headerFields?.bimestreCell || 'H6')}
-                  onChange={(e) => setProfile({
-                    ...profile,
-                    headerFields: { ...profile.headerFields, bimestreCell: normalizeCoordinate(e.target.value) }
-                  })}
-                  className="w-full bg-white border border-slate-300 rounded p-1.5 font-mono font-bold text-slate-800 text-center"
-                  placeholder="H6"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Card 4: Mapeador Livre de Células Específicas / Células Mescladas */}
-          <div className="border border-indigo-200 bg-indigo-50/40 rounded-xl p-4">
-            <h3 className="text-xs font-extrabold uppercase tracking-wider text-indigo-950 flex items-center justify-between mb-2">
-              <span className="flex items-center gap-1.5">
-                <Plus className="w-4 h-4 text-indigo-700" />
-                Mapeamento Livre de Coordenadas Específicas
-              </span>
-              <span className="text-[10px] text-indigo-700 font-bold bg-indigo-100 px-2 py-0.5 rounded">
-                {(profile.customCellMappings || []).length} campos adicionados
-              </span>
-            </h3>
-            <p className="text-[11px] text-indigo-900 mb-3">
-              Deseja injetar em uma célula avulsa, mesclada ou específica (ex: <strong>B13</strong>, <strong>B15</strong>, <strong>F22</strong>)? Digite abaixo ou clique diretamente nela na grade à direita:
-            </p>
-
-            {/* Mode Selector and Form */}
-            <div className="bg-white p-3 rounded-xl border border-indigo-200 shadow-2xs space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-indigo-100">
-                <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                  Modo de Injeção:
+                <span className="text-xs font-extrabold uppercase tracking-wider text-slate-800">
+                  3. Colunas da Grade (B, D, E, G, I)
                 </span>
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-800">
-                    <input
-                      type="radio"
-                      name="injectionMode"
-                      value="literal"
-                      checked={manualMode === 'literal'}
-                      onChange={() => setManualMode('literal')}
-                      className="text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <span className="flex items-center gap-1">
-                      <FileText className="w-3.5 h-3.5 text-slate-600" />
-                      <span>Texto Literal / Fixo</span>
-                      <span className="text-[10px] text-slate-500 font-normal">(sem IA)</span>
-                    </span>
-                  </label>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono text-slate-500 font-bold hidden sm:inline">
+                  B, D, E, G, I ativas
+                </span>
+                {openAccordions.columns ? (
+                  <ChevronUp className="w-4 h-4 text-slate-500" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-slate-500" />
+                )}
+              </div>
+            </button>
 
-                  <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-800">
-                    <input
-                      type="radio"
-                      name="injectionMode"
-                      value="ai_prompt"
-                      checked={manualMode === 'ai_prompt'}
-                      onChange={() => setManualMode('ai_prompt')}
-                      className="text-purple-600 focus:ring-purple-500"
-                    />
-                    <span className="flex items-center gap-1">
-                      <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-                      <span>Gerar com IA via Descritivo</span>
-                    </span>
-                  </label>
+            {openAccordions.columns && (
+              <div className="p-3.5 pt-0 border-t border-slate-200/70 mt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-2">
+                  {/* Coluna B: Data/Semana */}
+                  <div className={`p-2 rounded-lg border shadow-2xs transition-all ${
+                    isColumnDisabled(profile.columns?.dateWeekCol)
+                      ? 'bg-amber-50/60 border-amber-300'
+                      : 'bg-white border-slate-200'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-800">Coluna B (Data / Semana):</span>
+                      <select
+                        value={isColumnDisabled(profile.columns?.dateWeekCol) ? 'NONE' : (normalizeColLetter(profile.columns?.dateWeekCol) || 'B')}
+                        onChange={(e) => setProfile({
+                          ...profile,
+                          columns: { ...profile.columns, dateWeekCol: e.target.value === 'NONE' ? 'NONE' : normalizeColLetter(e.target.value) }
+                        })}
+                        className={`font-mono font-bold rounded px-2 py-0.5 text-xs border ${
+                          isColumnDisabled(profile.columns?.dateWeekCol)
+                            ? 'bg-amber-100 text-amber-900 border-amber-300'
+                            : 'bg-blue-50 text-blue-700 border-blue-200'
+                        }`}
+                      >
+                        <option value="NONE">[-- Desativada --]</option>
+                        {COLUMN_LETTERS.map(l => (
+                          <option key={l} value={l}>Coluna {l}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Coluna D: Habilidade / AE / Aula */}
+                  <div className={`p-2 rounded-lg border shadow-2xs transition-all ${
+                    isColumnDisabled(profile.columns?.skillCol)
+                      ? 'bg-amber-50/60 border-amber-300'
+                      : 'bg-white border-slate-200'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-800">Coluna D (Habilidade / AE):</span>
+                      <select
+                        value={isColumnDisabled(profile.columns?.skillCol) ? 'NONE' : (normalizeColLetter(profile.columns?.skillCol) || 'D')}
+                        onChange={(e) => setProfile({
+                          ...profile,
+                          columns: { ...profile.columns, skillCol: e.target.value === 'NONE' ? 'NONE' : normalizeColLetter(e.target.value) }
+                        })}
+                        className={`font-mono font-bold rounded px-2 py-0.5 text-xs border ${
+                          isColumnDisabled(profile.columns?.skillCol)
+                            ? 'bg-amber-100 text-amber-900 border-amber-300'
+                            : 'bg-blue-50 text-blue-700 border-blue-200'
+                        }`}
+                      >
+                        <option value="NONE">[-- Desativada --]</option>
+                        {COLUMN_LETTERS.map(l => (
+                          <option key={l} value={l}>Coluna {l}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Coluna E: Objetivos de Aprendizagem */}
+                  <div className={`p-2 rounded-lg border shadow-2xs transition-all ${
+                    isColumnDisabled(profile.columns?.objectivesCol)
+                      ? 'bg-amber-50/60 border-amber-300'
+                      : 'bg-white border-slate-200'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-800">Coluna E (Objetivos):</span>
+                      <select
+                        value={isColumnDisabled(profile.columns?.objectivesCol) ? 'NONE' : (normalizeColLetter(profile.columns?.objectivesCol) || 'E')}
+                        onChange={(e) => setProfile({
+                          ...profile,
+                          columns: { ...profile.columns, objectivesCol: e.target.value === 'NONE' ? 'NONE' : normalizeColLetter(e.target.value) }
+                        })}
+                        className={`font-mono font-bold rounded px-2 py-0.5 text-xs border ${
+                          isColumnDisabled(profile.columns?.objectivesCol)
+                            ? 'bg-amber-100 text-amber-900 border-amber-300'
+                            : 'bg-blue-50 text-blue-700 border-blue-200'
+                        }`}
+                      >
+                        <option value="NONE">[-- Desativada --]</option>
+                        {COLUMN_LETTERS.map(l => (
+                          <option key={l} value={l}>Coluna {l}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Coluna F: Metodologia */}
+                  <div className={`p-2 rounded-lg border shadow-2xs transition-all ${
+                    isColumnDisabled(profile.columns?.methodologyCol)
+                      ? 'bg-amber-50/60 border-amber-300 ring-1 ring-amber-200'
+                      : 'bg-white border-slate-200'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-800">Coluna F (Metodologia):</span>
+                      <select
+                        value={isColumnDisabled(profile.columns?.methodologyCol) ? 'NONE' : (normalizeColLetter(profile.columns?.methodologyCol) || 'F')}
+                        onChange={(e) => setProfile({
+                          ...profile,
+                          columns: { ...profile.columns, methodologyCol: e.target.value === 'NONE' ? 'NONE' : normalizeColLetter(e.target.value) }
+                        })}
+                        className={`font-mono font-bold rounded px-2 py-0.5 text-xs border ${
+                          isColumnDisabled(profile.columns?.methodologyCol)
+                            ? 'bg-amber-100 text-amber-900 border-amber-300'
+                            : 'bg-blue-50 text-blue-700 border-blue-200'
+                        }`}
+                      >
+                        <option value="NONE">[-- Em Branco / Desativada --]</option>
+                        {COLUMN_LETTERS.map(l => (
+                          <option key={l} value={l}>Coluna {l}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Coluna G: Desenvolvimento da Aula */}
+                  <div className={`p-2 rounded-lg border shadow-2xs transition-all ${
+                    isColumnDisabled(profile.columns?.developmentCol)
+                      ? 'bg-amber-50/60 border-amber-300'
+                      : 'bg-white border-slate-200'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-800">Coluna G (Desenvolvimento):</span>
+                      <select
+                        value={isColumnDisabled(profile.columns?.developmentCol) ? 'NONE' : (normalizeColLetter(profile.columns?.developmentCol) || 'G')}
+                        onChange={(e) => setProfile({
+                          ...profile,
+                          columns: { ...profile.columns, developmentCol: e.target.value === 'NONE' ? 'NONE' : normalizeColLetter(e.target.value) }
+                        })}
+                        className={`font-mono font-bold rounded px-2 py-0.5 text-xs border ${
+                          isColumnDisabled(profile.columns?.developmentCol)
+                            ? 'bg-amber-100 text-amber-900 border-amber-300'
+                            : 'bg-blue-50 text-blue-700 border-blue-200'
+                        }`}
+                      >
+                        <option value="NONE">[-- Desativada --]</option>
+                        {COLUMN_LETTERS.map(l => (
+                          <option key={l} value={l}>Coluna {l}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Coluna H: Avaliação */}
+                  <div className={`p-2 rounded-lg border shadow-2xs transition-all ${
+                    isColumnDisabled(profile.columns?.assessmentCol)
+                      ? 'bg-amber-50/60 border-amber-300 ring-1 ring-amber-200'
+                      : 'bg-white border-slate-200'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-800">Coluna H (Avaliação):</span>
+                      <select
+                        value={isColumnDisabled(profile.columns?.assessmentCol) ? 'NONE' : (normalizeColLetter(profile.columns?.assessmentCol) || 'H')}
+                        onChange={(e) => setProfile({
+                          ...profile,
+                          columns: { ...profile.columns, assessmentCol: e.target.value === 'NONE' ? 'NONE' : normalizeColLetter(e.target.value) }
+                        })}
+                        className={`font-mono font-bold rounded px-2 py-0.5 text-xs border ${
+                          isColumnDisabled(profile.columns?.assessmentCol)
+                            ? 'bg-amber-100 text-amber-900 border-amber-300'
+                            : 'bg-blue-50 text-blue-700 border-blue-200'
+                        }`}
+                      >
+                        <option value="NONE">[-- Em Branco / Desativada --]</option>
+                        {COLUMN_LETTERS.map(l => (
+                          <option key={l} value={l}>Coluna {l}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Coluna I: Ajustes / Recuperação */}
+                  <div className={`p-2 rounded-lg border shadow-2xs sm:col-span-2 transition-all ${
+                    isColumnDisabled(profile.columns?.recoveryCol)
+                      ? 'bg-amber-50/60 border-amber-300 ring-1 ring-amber-200'
+                      : 'bg-white border-slate-200'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-800">Coluna I (Recuperação / SEI):</span>
+                      <select
+                        value={isColumnDisabled(profile.columns?.recoveryCol) ? 'NONE' : (normalizeColLetter(profile.columns?.recoveryCol) || 'I')}
+                        onChange={(e) => setProfile({
+                          ...profile,
+                          columns: { ...profile.columns, recoveryCol: e.target.value === 'NONE' ? 'NONE' : normalizeColLetter(e.target.value) }
+                        })}
+                        className={`font-mono font-bold rounded px-2 py-0.5 text-xs border ${
+                          isColumnDisabled(profile.columns?.recoveryCol)
+                            ? 'bg-amber-100 text-amber-900 border-amber-300'
+                            : 'bg-amber-50 text-amber-800 border-amber-200'
+                        }`}
+                      >
+                        <option value="NONE">[-- Desativada --]</option>
+                        {COLUMN_LETTERS.map(l => (
+                          <option key={l} value={l}>Coluna {l}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                 </div>
               </div>
+            )}
+          </div>
 
-              <div className="flex flex-col sm:flex-row items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="Célula (Ex: J21, B13)"
-                  value={manualCoord}
-                  onChange={(e) => setManualCoord(e.target.value.toUpperCase())}
-                  className="w-full sm:w-28 bg-white border border-indigo-300 rounded-lg p-2 font-mono font-bold text-xs text-indigo-950 text-center uppercase"
-                />
-                <input
-                  type="text"
-                  placeholder={manualMode === 'literal' ? "Texto Fixo (ex: 30%, Prova Paulista, 20%)" : "Orientação para IA (ex: Descrever os instrumentos...)"}
-                  value={manualLabel}
-                  onChange={(e) => setManualLabel(e.target.value)}
-                  className="w-full sm:flex-1 bg-white border border-indigo-300 rounded-lg p-2 text-xs text-slate-800"
-                />
-                <select
-                  value={manualType}
-                  onChange={(e) => setManualType(e.target.value as any)}
-                  className="w-full sm:w-auto bg-white border border-indigo-300 rounded-lg p-2 text-xs font-semibold text-slate-800"
-                >
-                  <option value="habilidade">Habilidade / Conteúdo</option>
-                  <option value="objeto_conhecimento">Objetivo / Conhecimento</option>
-                  <option value="metodologia">Metodologia</option>
-                  <option value="desenvolvimento_aula">Desenvolvimento da Aula</option>
-                  <option value="avaliacao">Avaliação</option>
-                  <option value="recuperacao_sei">Recuperação / SEI</option>
-                  <option value="periodo">Data / Período</option>
-                  <option value="identificacao">Identificação</option>
-                </select>
-                <button
-                  type="button"
-                  onClick={handleAddManualCoord}
-                  disabled={!manualCoord.trim()}
-                  className="w-full sm:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors shadow-2xs"
-                >
-                  <Plus className="w-3.5 h-3.5" /> Adicionar
-                </button>
+          {/* Accordion 4: Cabeçalho e Células Específicas */}
+          <div className="border border-indigo-200 rounded-xl bg-indigo-50/30 shadow-2xs overflow-hidden transition-all">
+            <button
+              type="button"
+              onClick={() => toggleAccordion('headerAndCells')}
+              className="w-full flex items-center justify-between p-3.5 text-left transition-colors hover:bg-indigo-100/40 cursor-pointer select-none"
+            >
+              <div className="flex items-center gap-2">
+                <Sliders className="w-4 h-4 text-indigo-800" />
+                <span className="text-xs font-extrabold uppercase tracking-wider text-indigo-950">
+                  4. Cabeçalho e Células Específicas
+                </span>
               </div>
-            </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded border border-indigo-200">
+                  {(profile.customCellMappings || []).length} mapeadas
+                </span>
+                {openAccordions.headerAndCells ? (
+                  <ChevronUp className="w-4 h-4 text-indigo-600" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-indigo-600" />
+                )}
+              </div>
+            </button>
 
-            {/* List of custom mapped cells */}
-            {profile.customCellMappings && profile.customCellMappings.length > 0 && (
-              <div className="mt-3 space-y-1.5 max-h-48 overflow-y-auto">
-                {profile.customCellMappings.map(cm => {
-                  const resolvedMode = resolveCustomMappingMode({ address: cm.address, label: cm.label, mode: cm.mode });
-                  const isLiteral = resolvedMode === 'literal';
+            {openAccordions.headerAndCells && (
+              <div className="p-3.5 pt-0 border-t border-indigo-200/70 mt-1 space-y-3">
+                {/* Bloco A: Coordenadas do Cabeçalho Fixo */}
+                <div className="pt-2">
+                  <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
+                    Coordenadas do Cabeçalho Fixo (Identificação):
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
+                    <div>
+                      <label className="block text-slate-600 font-medium mb-0.5 text-[11px]">Escola:</label>
+                      <input
+                        type="text"
+                        value={normalizeCoordinate(profile.headerFields?.schoolCell || 'D4')}
+                        onChange={(e) => setProfile({
+                          ...profile,
+                          headerFields: { ...profile.headerFields, schoolCell: normalizeCoordinate(e.target.value) }
+                        })}
+                        className="w-full bg-white border border-slate-300 rounded p-1 font-mono font-bold text-slate-800 text-center"
+                        placeholder="D4"
+                      />
+                    </div>
 
-                  return (
-                    <div
-                      key={cm.address}
-                      className="flex items-center justify-between p-2 rounded-lg bg-white border border-indigo-200 text-xs shadow-2xs"
-                    >
-                      <div className="flex items-center gap-2 flex-wrap min-w-0">
-                        <span className="font-mono font-extrabold text-indigo-900 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
-                          {cm.address}
-                        </span>
+                    <div>
+                      <label className="block text-slate-600 font-medium mb-0.5 text-[11px]">Professor(a):</label>
+                      <input
+                        type="text"
+                        value={normalizeCoordinate(profile.headerFields?.teacherCell || 'D5')}
+                        onChange={(e) => setProfile({
+                          ...profile,
+                          headerFields: { ...profile.headerFields, teacherCell: normalizeCoordinate(e.target.value) }
+                        })}
+                        className="w-full bg-white border border-slate-300 rounded p-1 font-mono font-bold text-slate-800 text-center"
+                        placeholder="D5"
+                      />
+                    </div>
 
-                        {/* Mode Badge [Fixo] or [IA] */}
-                        {isLiteral ? (
-                          <span className="text-[10px] font-extrabold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-300 flex items-center gap-1">
-                            <FileText className="w-3 h-3 text-slate-500" />
-                            [Fixo]
+                    <div>
+                      <label className="block text-slate-600 font-medium mb-0.5 text-[11px]">Disciplina:</label>
+                      <input
+                        type="text"
+                        value={normalizeCoordinate(profile.headerFields?.subjectCell || 'D6')}
+                        onChange={(e) => setProfile({
+                          ...profile,
+                          headerFields: { ...profile.headerFields, subjectCell: normalizeCoordinate(e.target.value) }
+                        })}
+                        className="w-full bg-white border border-slate-300 rounded p-1 font-mono font-bold text-slate-800 text-center"
+                        placeholder="D6"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-600 font-medium mb-0.5 text-[11px]">Turma/Série:</label>
+                      <input
+                        type="text"
+                        value={normalizeCoordinate(profile.headerFields?.gradeCell || 'H5')}
+                        onChange={(e) => setProfile({
+                          ...profile,
+                          headerFields: { ...profile.headerFields, gradeCell: normalizeCoordinate(e.target.value) }
+                        })}
+                        className="w-full bg-white border border-slate-300 rounded p-1 font-mono font-bold text-slate-800 text-center"
+                        placeholder="H5"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-600 font-medium mb-0.5 text-[11px]">Bimestre:</label>
+                      <input
+                        type="text"
+                        value={normalizeCoordinate(profile.headerFields?.bimestreCell || 'H6')}
+                        onChange={(e) => setProfile({
+                          ...profile,
+                          headerFields: { ...profile.headerFields, bimestreCell: normalizeCoordinate(e.target.value) }
+                        })}
+                        className="w-full bg-white border border-slate-300 rounded p-1 font-mono font-bold text-slate-800 text-center"
+                        placeholder="H6"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bloco B: Mapeamento de Células Específicas / Mescladas */}
+                <div className="pt-2 border-t border-indigo-200/50">
+                  <span className="text-[11px] font-bold text-indigo-950 uppercase tracking-wider block mb-1.5">
+                    Mapeamento de Células Específicas / Mescladas:
+                  </span>
+
+                  {/* Mode Selector and Form */}
+                  <div className="bg-white p-2.5 rounded-xl border border-indigo-200 shadow-2xs space-y-2.5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pb-2 border-b border-indigo-100">
+                      <span className="text-xs font-bold text-slate-700">
+                        Modo de Injeção:
+                      </span>
+                      <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-800">
+                          <input
+                            type="radio"
+                            name="injectionMode"
+                            value="literal"
+                            checked={manualMode === 'literal'}
+                            onChange={() => setManualMode('literal')}
+                            className="text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <span className="flex items-center gap-1">
+                            <FileText className="w-3.5 h-3.5 text-slate-600" />
+                            <span>Texto Fixo</span>
                           </span>
-                        ) : (
-                          <span className="text-[10px] font-extrabold text-purple-700 bg-purple-100 px-2 py-0.5 rounded border border-purple-300 flex items-center gap-1">
-                            <Sparkles className="w-3 h-3 text-purple-600" />
-                            [IA]
-                          </span>
-                        )}
+                        </label>
 
-                        <span className="font-semibold text-slate-800 truncate max-w-xs" title={cm.label}>
-                          {cm.label}
-                        </span>
-
-                        {cm.isMerged && (
-                          <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded border border-purple-200 flex items-center gap-1">
-                            <Combine className="w-2.5 h-2.5" /> {cm.mergeRange || 'Mesclada'}
+                        <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-800">
+                          <input
+                            type="radio"
+                            name="injectionMode"
+                            value="ai_prompt"
+                            checked={manualMode === 'ai_prompt'}
+                            onChange={() => setManualMode('ai_prompt')}
+                            className="text-purple-600 focus:ring-purple-500"
+                          />
+                          <span className="flex items-center gap-1">
+                            <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                            <span>Gerar com IA</span>
                           </span>
-                        )}
+                        </label>
                       </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-center gap-2">
+                      <input
+                        type="text"
+                        placeholder="Célula (Ex: J21, B13)"
+                        value={manualCoord}
+                        onChange={(e) => setManualCoord(e.target.value.toUpperCase())}
+                        className="w-full sm:w-28 bg-white border border-indigo-300 rounded-lg p-1.5 font-mono font-bold text-xs text-indigo-950 text-center uppercase"
+                      />
+                      <input
+                        type="text"
+                        placeholder={manualMode === 'literal' ? "Texto Fixo (ex: 30%, Prova Paulista, 20%)" : "Orientação para IA (ex: Descrever os instrumentos...)"}
+                        value={manualLabel}
+                        onChange={(e) => setManualLabel(e.target.value)}
+                        className="w-full sm:flex-1 bg-white border border-indigo-300 rounded-lg p-1.5 text-xs text-slate-800"
+                      />
+                      <select
+                        value={manualType}
+                        onChange={(e) => setManualType(e.target.value as any)}
+                        className="w-full sm:w-auto bg-white border border-indigo-300 rounded-lg p-1.5 text-xs font-semibold text-slate-800"
+                      >
+                        <option value="habilidade">Habilidade / Conteúdo</option>
+                        <option value="objeto_conhecimento">Objetivo / Conhecimento</option>
+                        <option value="metodologia">Metodologia</option>
+                        <option value="desenvolvimento_aula">Desenvolvimento da Aula</option>
+                        <option value="avaliacao">Avaliação</option>
+                        <option value="recuperacao_sei">Recuperação / SEI</option>
+                        <option value="periodo">Data / Período</option>
+                        <option value="identificacao">Identificação</option>
+                      </select>
                       <button
                         type="button"
-                        onClick={() => handleRemoveCustomMapping(cm.address)}
-                        className="text-slate-400 hover:text-rose-600 p-1 cursor-pointer transition-colors shrink-0"
-                        title="Remover mapeamento"
+                        onClick={handleAddManualCoord}
+                        disabled={!manualCoord.trim()}
+                        className="w-full sm:w-auto px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors shadow-2xs"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Plus className="w-3.5 h-3.5" /> Adicionar
                       </button>
                     </div>
-                  );
-                })}
+                  </div>
+
+                  {/* List of custom mapped cells */}
+                  {profile.customCellMappings && profile.customCellMappings.length > 0 && (
+                    <div className="mt-2.5 space-y-1.5 max-h-48 overflow-y-auto">
+                      {profile.customCellMappings.map(cm => {
+                        const resolvedMode = resolveCustomMappingMode({ address: cm.address, label: cm.label, mode: cm.mode });
+                        const isLiteral = resolvedMode === 'literal';
+
+                        return (
+                          <div
+                            key={cm.address}
+                            className="flex items-center justify-between p-2 rounded-lg bg-white border border-indigo-200 text-xs shadow-2xs"
+                          >
+                            <div className="flex items-center gap-2 flex-wrap min-w-0">
+                              <span className="font-mono font-extrabold text-indigo-900 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                                {cm.address}
+                              </span>
+
+                              {/* Mode Badge [Fixo] or [IA] */}
+                              {isLiteral ? (
+                                <span className="text-[10px] font-extrabold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-300 flex items-center gap-1">
+                                  <FileText className="w-3 h-3 text-slate-500" />
+                                  [Fixo]
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-extrabold text-purple-700 bg-purple-100 px-2 py-0.5 rounded border border-purple-300 flex items-center gap-1">
+                                  <Sparkles className="w-3 h-3 text-purple-600" />
+                                  [IA]
+                                </span>
+                              )}
+
+                              <span className="font-semibold text-slate-800 truncate max-w-xs" title={cm.label}>
+                                {cm.label}
+                              </span>
+
+                              {cm.isMerged && (
+                                <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded border border-purple-200 flex items-center gap-1">
+                                  <Combine className="w-2.5 h-2.5" /> {cm.mergeRange || 'Mesclada'}
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveCustomMapping(cm.address)}
+                              className="text-slate-400 hover:text-rose-600 p-1 cursor-pointer transition-colors shrink-0"
+                              title="Remover mapeamento"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Accordion 5: Configurações Avançadas e Proteção de Linhas */}
+          <div className="border border-slate-200 rounded-xl bg-slate-50/50 shadow-2xs overflow-hidden transition-all">
+            <button
+              type="button"
+              onClick={() => toggleAccordion('advancedMenu')}
+              className="w-full flex items-center justify-between p-3.5 text-left transition-colors hover:bg-slate-100/60 cursor-pointer select-none"
+            >
+              <div className="flex items-center gap-2">
+                <FileCheck className="w-4 h-4 text-[#002B49]" />
+                <span className="text-xs font-extrabold uppercase tracking-wider text-slate-800">
+                  5. Configurações Avançadas e Proteção
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono text-slate-500 font-bold hidden sm:inline">
+                  ExcelJS • Proteção de Fórmulas
+                </span>
+                {openAccordions.advancedMenu ? (
+                  <ChevronUp className="w-4 h-4 text-slate-500" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-slate-500" />
+                )}
+              </div>
+            </button>
+
+            {openAccordions.advancedMenu && (
+              <div className="p-3.5 pt-0 border-t border-slate-200/70 mt-1 space-y-2.5 text-xs">
+                <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div className="bg-white p-2.5 rounded-lg border border-slate-200 shadow-2xs">
+                    <span className="font-bold text-slate-800 block mb-0.5">Proteção de Linhas e Células:</span>
+                    <p className="text-[11px] text-slate-600">
+                      As linhas reservadas (B13, B15, B17) e fórmulas automáticas (J7, J8, J9) estão integralmente blindadas contra sobrescrita indevida.
+                    </p>
+                  </div>
+                  <div className="bg-white p-2.5 rounded-lg border border-slate-200 shadow-2xs">
+                    <span className="font-bold text-slate-800 block mb-0.5">Integridade da Aba:</span>
+                    <p className="text-[11px] text-slate-600">
+                      Injeção direta na aba ativa <strong className="font-mono text-blue-900">{profile.targetSheet}</strong> com fidelidade estilística e tipográfica SEDUC-SP.
+                    </p>
+                  </div>
+                </div>
+
+                {profile.skipRows && profile.skipRows.length > 0 && (
+                  <div className="pt-1 flex items-center justify-between bg-amber-50 p-2 rounded-lg border border-amber-200">
+                    <span className="text-[11px] font-bold text-amber-900">
+                      Linhas ignoradas configuradas: {profile.skipRows.join(', ')}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setProfile({ ...profile, skipRows: [] })}
+                      className="px-2 py-0.5 bg-white border border-amber-300 text-amber-900 text-[10px] font-bold rounded hover:bg-amber-100 cursor-pointer"
+                    >
+                      Liberar Todas as Linhas
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

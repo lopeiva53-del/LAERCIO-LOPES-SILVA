@@ -16,7 +16,9 @@ import {
   FileText,
   Bookmark,
   FileCheck,
-  Lock
+  Lock,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { MappedField, CellMapProfile } from '../types/plan';
 import { FIXED_IMMUTABLE_CELLS } from '../config/version';
@@ -74,6 +76,19 @@ export const MappingViewer: React.FC<MappingViewerProps> = ({
   });
   const sortedRowNumbers = Array.from(rowsMap.keys()).sort((a, b) => a - b);
 
+  // Accordion state for weekly rows in Step 3 (only first row/week 1 open by default)
+  const [openWeeks, setOpenWeeks] = useState<{ [rowNum: number]: boolean }>(() => {
+    const initial: { [rowNum: number]: boolean } = {};
+    if (sortedRowNumbers.length > 0) {
+      initial[sortedRowNumbers[0]] = true; // only week 1 open by default
+    }
+    return initial;
+  });
+
+  const toggleWeek = (rowNum: number) => {
+    setOpenWeeks(prev => ({ ...prev, [rowNum]: !prev[rowNum] }));
+  };
+
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
       {/* Header with Step Info & Prompt Question */}
@@ -99,7 +114,7 @@ export const MappingViewer: React.FC<MappingViewerProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {onBackToTraining && (
             <button
               onClick={onBackToTraining}
@@ -124,9 +139,21 @@ export const MappingViewer: React.FC<MappingViewerProps> = ({
                 viewMode === 'table' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Lista Detalhada ({currentSheetFields.length})
+              Lista ({currentSheetFields.length})
             </button>
           </div>
+
+          <button
+            onClick={onConfirmAndProcess}
+            disabled={totalConfirmed === 0}
+            className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-sm transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            <span>Confirmar e Iniciar</span>
+            <span className="bg-emerald-800/60 text-white px-1.5 py-0.2 rounded text-[10px] font-mono">
+              {totalConfirmed}
+            </span>
+          </button>
         </div>
       </div>
 
@@ -161,444 +188,142 @@ export const MappingViewer: React.FC<MappingViewerProps> = ({
         </div>
       )}
 
-      {/* Header Identification Box (if mapped in profile) */}
-      {headerFields.length > 0 && (
-        <div className="mt-4 p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
-          <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-600 flex items-center gap-1.5 mb-2">
-            <Sliders className="w-3.5 h-3.5 text-[#002B49]" />
-            Cabeçalho Fixo (Identificação Institucional)
-          </h4>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {headerFields.map(hf => {
-              const addr = (hf.address || '').toUpperCase().trim();
-              const isJCell = ['J7', 'J8', 'J9'].includes(addr) || hf.id.includes('diasLetivos') || hf.id.includes('plannedClasses') || hf.id.includes('diasEfetivos');
-              return (
-                <div key={hf.id} className={`p-2 rounded-lg text-xs transition-all ${
-                  isJCell 
-                    ? 'bg-blue-50/70 border-2 border-blue-300 shadow-2xs' 
-                    : 'bg-white border border-slate-200'
-                }`}>
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-600 text-[10px] truncate pr-1" title={hf.label}>{hf.label}:</span>
-                    <div className="flex items-center gap-1">
-                      {addr === 'J7' && (
-                        <span className="text-[9px] font-bold text-blue-800 bg-blue-100 px-1 rounded">
-                          Seg-Sex
-                        </span>
-                      )}
-                      <span className={`font-mono font-bold text-[10px] px-1 rounded ${
-                        isJCell ? 'bg-[#002B49] text-white' : 'bg-blue-50 text-blue-700'
-                      }`}>
-                        {hf.address}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="font-extrabold text-slate-900 text-[11px] truncate mt-0.5">
-                    {hf.fillValue || hf.currentValue || '(A preencher)'}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
+      {/* 2. Compact Horizontal Chips Summary Bar (Escola, Professor, Turma, J7, J8, J9, Proteção) */}
+      <div className="mt-3.5 p-2 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-2 flex-wrap text-xs">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {headerFields.map(hf => {
+            const addr = (hf.address || '').toUpperCase().trim();
+            const val = hf.fillValue || hf.currentValue || '(A preencher)';
+            const isJCell = ['J7', 'J8', 'J9'].includes(addr) || hf.id.includes('diasLetivos') || hf.id.includes('plannedClasses') || hf.id.includes('diasEfetivos');
+
+            return (
+              <div 
+                key={hf.id}
+                className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] shadow-2xs ${
+                  isJCell
+                    ? 'bg-blue-50/90 border-blue-300 text-blue-950 font-bold'
+                    : 'bg-white border-slate-200 text-slate-800'
+                }`}
+                title={`${hf.label}: ${val} (${addr})`}
+              >
+                <span className="font-semibold text-slate-500 text-[10px]">{hf.label.replace(/[:(].*$/, '')}:</span>
+                <span className="font-extrabold truncate max-w-[140px] text-slate-900">{val}</span>
+                <span className={`font-mono text-[9px] px-1 rounded ${isJCell ? 'bg-[#002B49] text-white' : 'bg-slate-100 text-slate-600'}`}>
+                  {addr}
+                </span>
+              </div>
+            );
+          })}
         </div>
-      )}
 
-      {/* 2. COLUNAS DA GRADE SEMANAL */}
-      {activeProfile && (
-        <div className="mt-4 p-4 rounded-xl border border-slate-200 bg-slate-50/70 shadow-2xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 mb-3 border-b border-slate-200 gap-2">
-            <div>
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#002B49] flex items-center gap-1.5">
-                <Table className="w-4 h-4 text-[#002B49]" />
-                2. COLUNAS DA GRADE SEMANAL
-              </h4>
-              <p className="text-[11px] text-slate-500 mt-0.5">
-                Selecione <strong>[-- Em Branco / Desativada --]</strong> para ignorar Metodologia, Avaliação, SEI ou qualquer coluna desejada.
-              </p>
-            </div>
-            <span className="text-[10px] font-bold text-slate-700 bg-white px-2 py-1 rounded border border-slate-200 shrink-0">
-              Opção: [-- Em Branco / Desativada --]
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 text-xs">
-            {/* Metodologia */}
-            <div className={`p-2.5 rounded-lg border shadow-2xs transition-all ${
-              isColumnDisabled(activeProfile.columns?.methodologyCol)
-                ? 'bg-amber-50/70 border-amber-300 ring-1 ring-amber-200'
-                : 'bg-white border-slate-200'
-            }`}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-bold text-slate-800 text-[11px]">Metodologia:</span>
-                <select
-                  value={isColumnDisabled(activeProfile.columns?.methodologyCol) ? 'NONE' : (normalizeColLetter(activeProfile.columns?.methodologyCol) || 'F')}
-                  onChange={(e) => onUpdateProfileColumns?.({
-                    ...activeProfile.columns,
-                    methodologyCol: e.target.value === 'NONE' ? 'NONE' : normalizeColLetter(e.target.value)
-                  })}
-                  className={`font-mono font-bold rounded px-2 py-0.5 text-xs border ${
-                    isColumnDisabled(activeProfile.columns?.methodologyCol)
-                      ? 'bg-amber-100 text-amber-900 border-amber-300'
-                      : 'bg-blue-50 text-blue-700 border-blue-200'
-                  }`}
-                >
-                  <option value="NONE">[-- Em Branco / Desativada --]</option>
-                  {COLUMN_LETTERS.map(l => (
-                    <option key={l} value={l}>Coluna {l}</option>
-                  ))}
-                </select>
-              </div>
-              <span className="text-[10px] text-slate-500">
-                {isColumnDisabled(activeProfile.columns?.methodologyCol)
-                  ? '⚠️ Desativada (estritamente vazia)'
-                  : 'Padrão: Coluna F'}
-              </span>
-            </div>
-
-            {/* Avaliação da Aprendizagem */}
-            <div className={`p-2.5 rounded-lg border shadow-2xs transition-all ${
-              isColumnDisabled(activeProfile.columns?.assessmentCol)
-                ? 'bg-amber-50/70 border-amber-300 ring-1 ring-amber-200'
-                : 'bg-white border-slate-200'
-            }`}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-bold text-slate-800 text-[11px]">Avaliação da Aprendizagem:</span>
-                <select
-                  value={isColumnDisabled(activeProfile.columns?.assessmentCol) ? 'NONE' : (normalizeColLetter(activeProfile.columns?.assessmentCol) || 'H')}
-                  onChange={(e) => onUpdateProfileColumns?.({
-                    ...activeProfile.columns,
-                    assessmentCol: e.target.value === 'NONE' ? 'NONE' : normalizeColLetter(e.target.value)
-                  })}
-                  className={`font-mono font-bold rounded px-2 py-0.5 text-xs border ${
-                    isColumnDisabled(activeProfile.columns?.assessmentCol)
-                      ? 'bg-amber-100 text-amber-900 border-amber-300'
-                      : 'bg-blue-50 text-blue-700 border-blue-200'
-                  }`}
-                >
-                  <option value="NONE">[-- Em Branco / Desativada --]</option>
-                  {COLUMN_LETTERS.map(l => (
-                    <option key={l} value={l}>Coluna {l}</option>
-                  ))}
-                </select>
-              </div>
-              <span className="text-[10px] text-slate-500">
-                {isColumnDisabled(activeProfile.columns?.assessmentCol)
-                  ? '⚠️ Desativada (estritamente vazia)'
-                  : 'Padrão: Coluna H'}
-              </span>
-            </div>
-
-            {/* Ajustes Pedagógicos / Recuperação SEI */}
-            <div className={`p-2.5 rounded-lg border shadow-2xs transition-all ${
-              isColumnDisabled(activeProfile.columns?.recoveryCol)
-                ? 'bg-amber-50/70 border-amber-300 ring-1 ring-amber-200'
-                : 'bg-white border-slate-200'
-            }`}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-bold text-slate-800 text-[11px]">Ajustes / Recuperação (SEI):</span>
-                <select
-                  value={isColumnDisabled(activeProfile.columns?.recoveryCol) ? 'NONE' : (normalizeColLetter(activeProfile.columns?.recoveryCol) || 'I')}
-                  onChange={(e) => onUpdateProfileColumns?.({
-                    ...activeProfile.columns,
-                    recoveryCol: e.target.value === 'NONE' ? 'NONE' : normalizeColLetter(e.target.value)
-                  })}
-                  className={`font-mono font-bold rounded px-2 py-0.5 text-xs border ${
-                    isColumnDisabled(activeProfile.columns?.recoveryCol)
-                      ? 'bg-amber-100 text-amber-900 border-amber-300'
-                      : 'bg-amber-50 text-amber-800 border-amber-200'
-                  }`}
-                >
-                  <option value="NONE">[-- Em Branco / Desativada --]</option>
-                  {COLUMN_LETTERS.map(l => (
-                    <option key={l} value={l}>Coluna {l}</option>
-                  ))}
-                </select>
-              </div>
-              <span className="text-[10px] text-slate-500">
-                {isColumnDisabled(activeProfile.columns?.recoveryCol)
-                  ? '⚠️ Desativada (estritamente vazia)'
-                  : 'Padrão: Coluna I'}
-              </span>
-            </div>
-
-            {/* Habilidade / AE / Aula */}
-            <div className={`p-2.5 rounded-lg border shadow-2xs transition-all ${
-              isColumnDisabled(activeProfile.columns?.skillCol)
-                ? 'bg-amber-50/70 border-amber-300 ring-1 ring-amber-200'
-                : 'bg-white border-slate-200'
-            }`}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-bold text-slate-800 text-[11px]">Habilidade / Aula:</span>
-                <select
-                  value={isColumnDisabled(activeProfile.columns?.skillCol) ? 'NONE' : (normalizeColLetter(activeProfile.columns?.skillCol) || 'D')}
-                  onChange={(e) => onUpdateProfileColumns?.({
-                    ...activeProfile.columns,
-                    skillCol: e.target.value === 'NONE' ? 'NONE' : normalizeColLetter(e.target.value)
-                  })}
-                  className={`font-mono font-bold rounded px-2 py-0.5 text-xs border ${
-                    isColumnDisabled(activeProfile.columns?.skillCol)
-                      ? 'bg-amber-100 text-amber-900 border-amber-300'
-                      : 'bg-blue-50 text-blue-700 border-blue-200'
-                  }`}
-                >
-                  <option value="NONE">[-- Em Branco / Desativada --]</option>
-                  {COLUMN_LETTERS.map(l => (
-                    <option key={l} value={l}>Coluna {l}</option>
-                  ))}
-                </select>
-              </div>
-              <span className="text-[10px] text-slate-500">
-                {isColumnDisabled(activeProfile.columns?.skillCol)
-                  ? '⚠️ Desativada (estritamente vazia)'
-                  : 'Padrão: Coluna D'}
-              </span>
-            </div>
-
-            {/* Objetivos de Aprendizagem */}
-            <div className={`p-2.5 rounded-lg border shadow-2xs transition-all ${
-              isColumnDisabled(activeProfile.columns?.objectivesCol)
-                ? 'bg-amber-50/70 border-amber-300 ring-1 ring-amber-200'
-                : 'bg-white border-slate-200'
-            }`}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-bold text-slate-800 text-[11px]">Objetivos:</span>
-                <select
-                  value={isColumnDisabled(activeProfile.columns?.objectivesCol) ? 'NONE' : (normalizeColLetter(activeProfile.columns?.objectivesCol) || 'E')}
-                  onChange={(e) => onUpdateProfileColumns?.({
-                    ...activeProfile.columns,
-                    objectivesCol: e.target.value === 'NONE' ? 'NONE' : normalizeColLetter(e.target.value)
-                  })}
-                  className={`font-mono font-bold rounded px-2 py-0.5 text-xs border ${
-                    isColumnDisabled(activeProfile.columns?.objectivesCol)
-                      ? 'bg-amber-100 text-amber-900 border-amber-300'
-                      : 'bg-blue-50 text-blue-700 border-blue-200'
-                  }`}
-                >
-                  <option value="NONE">[-- Em Branco / Desativada --]</option>
-                  {COLUMN_LETTERS.map(l => (
-                    <option key={l} value={l}>Coluna {l}</option>
-                  ))}
-                </select>
-              </div>
-              <span className="text-[10px] text-slate-500">
-                {isColumnDisabled(activeProfile.columns?.objectivesCol)
-                  ? '⚠️ Desativada (estritamente vazia)'
-                  : 'Padrão: Coluna E'}
-              </span>
-            </div>
-
-            {/* Desenvolvimento da Aula */}
-            <div className={`p-2.5 rounded-lg border shadow-2xs transition-all ${
-              isColumnDisabled(activeProfile.columns?.developmentCol)
-                ? 'bg-amber-50/70 border-amber-300 ring-1 ring-amber-200'
-                : 'bg-white border-slate-200'
-            }`}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-bold text-slate-800 text-[11px]">Desenvolvimento:</span>
-                <select
-                  value={isColumnDisabled(activeProfile.columns?.developmentCol) ? 'NONE' : (normalizeColLetter(activeProfile.columns?.developmentCol) || 'G')}
-                  onChange={(e) => onUpdateProfileColumns?.({
-                    ...activeProfile.columns,
-                    developmentCol: e.target.value === 'NONE' ? 'NONE' : normalizeColLetter(e.target.value)
-                  })}
-                  className={`font-mono font-bold rounded px-2 py-0.5 text-xs border ${
-                    isColumnDisabled(activeProfile.columns?.developmentCol)
-                      ? 'bg-amber-100 text-amber-900 border-amber-300'
-                      : 'bg-blue-50 text-blue-700 border-blue-200'
-                  }`}
-                >
-                  <option value="NONE">[-- Em Branco / Desativada --]</option>
-                  {COLUMN_LETTERS.map(l => (
-                    <option key={l} value={l}>Coluna {l}</option>
-                  ))}
-                </select>
-              </div>
-              <span className="text-[10px] text-slate-500">
-                {isColumnDisabled(activeProfile.columns?.developmentCol)
-                  ? '⚠️ Desativada (estritamente vazia)'
-                  : 'Padrão: Coluna G'}
-              </span>
-            </div>
-
-            {/* Data / Semana */}
-            <div className={`p-2.5 rounded-lg border shadow-2xs transition-all ${
-              isColumnDisabled(activeProfile.columns?.dateWeekCol)
-                ? 'bg-amber-50/70 border-amber-300 ring-1 ring-amber-200'
-                : 'bg-white border-slate-200'
-            }`}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-bold text-slate-800 text-[11px]">Data / Semana:</span>
-                <select
-                  value={isColumnDisabled(activeProfile.columns?.dateWeekCol) ? 'NONE' : (normalizeColLetter(activeProfile.columns?.dateWeekCol) || 'B')}
-                  onChange={(e) => onUpdateProfileColumns?.({
-                    ...activeProfile.columns,
-                    dateWeekCol: e.target.value === 'NONE' ? 'NONE' : normalizeColLetter(e.target.value)
-                  })}
-                  className={`font-mono font-bold rounded px-2 py-0.5 text-xs border ${
-                    isColumnDisabled(activeProfile.columns?.dateWeekCol)
-                      ? 'bg-amber-100 text-amber-900 border-amber-300'
-                      : 'bg-blue-50 text-blue-700 border-blue-200'
-                  }`}
-                >
-                  <option value="NONE">[-- Em Branco / Desativada --]</option>
-                  {COLUMN_LETTERS.map(l => (
-                    <option key={l} value={l}>Coluna {l}</option>
-                  ))}
-                </select>
-              </div>
-              <span className="text-[10px] text-slate-500">
-                {isColumnDisabled(activeProfile.columns?.dateWeekCol)
-                  ? '⚠️ Desativada (estritamente vazia)'
-                  : 'Padrão: Coluna B'}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Painel de Auditoria das Células Fixas Imutáveis B13, B15 e B17 */}
-      <div className="mt-4 p-3.5 bg-gradient-to-br from-amber-50/70 via-white to-slate-50 border-2 border-amber-300 rounded-xl shadow-2xs">
-        <div className="flex items-center justify-between mb-2">
-          <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#002B49] flex items-center gap-1.5">
-            <Lock className="w-3.5 h-3.5 text-amber-700" />
-            Células Fixas Imutáveis (B13, B15 e B17) • Bloqueio de IA
-          </h4>
-          <span className="text-[10px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
-            Texto Fixo Imutável • ExcelJS
+        {/* Subtle protection badge */}
+        <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+          <span 
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-300 text-[11px] font-bold text-amber-900 shadow-2xs"
+            title="Células com bloqueio total de IA e injeção preservada no ExcelJS"
+          >
+            <Lock className="w-3 h-3 text-amber-700" />
+            <span>B13, B15, B17 Protegidas</span>
           </span>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
-          {Object.values(FIXED_IMMUTABLE_CELLS).map((item) => (
-            <div key={item.address} className="bg-white p-3 rounded-lg border border-amber-200 shadow-2xs">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="font-extrabold text-[#002B49] text-xs flex items-center gap-1.5">
-                  <span className="font-mono bg-[#002B49] text-white px-1.5 py-0.5 rounded text-[10px] font-bold">
-                    {item.address}
-                  </span>
-                  {item.label}
-                </span>
-                <span className="text-[9px] font-bold text-amber-900 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 flex items-center gap-0.5">
-                  <Lock className="w-2.5 h-2.5 text-amber-700" /> {item.tag}
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-700 leading-relaxed font-medium">
-                "{item.text}"
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Preservation Assurance Badge */}
-      <div className="mt-4 bg-blue-50/80 border border-blue-200 rounded-xl p-3 flex items-start sm:items-center justify-between gap-3">
-        <div className="flex items-start sm:items-center gap-2.5">
-          <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5 sm:mt-0" />
-          <div className="text-xs text-blue-900">
-            <span className="font-bold">Injeção Confinada por Coordenadas:</span> Nenhuma célula de instrução (ex: B13-B15) ou cabeçalho superior será modificada. Apenas as colunas treinadas da grade semanal receberão dados.
-          </div>
-        </div>
-        <div className="text-xs font-semibold text-blue-800 bg-white px-2 py-0.5 rounded border border-blue-200 shrink-0">
-          ExcelJS Coordinate Safe
-        </div>
-      </div>
-
-      {/* The Central Question Box Required by Step */}
-      <div className="mt-5 p-4 rounded-xl bg-amber-50/80 border-2 border-amber-300 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center shrink-0 font-extrabold text-lg shadow-sm">
-            ?
-          </div>
-          <div>
-            <h3 className="font-extrabold text-amber-950 text-base">
-              Confirmar campos para preenchimento?
-            </h3>
-            <p className="text-xs text-amber-800 mt-0.5">
-              {totalConfirmed} de {fields.length} coordenadas selecionadas para injeção via Gemini API e Calendário SEDUC.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
           <button
             onClick={() => onToggleAll(!allSelected)}
-            className="px-3 py-2 rounded-lg bg-white border border-amber-300 text-amber-900 text-xs font-bold hover:bg-amber-100/50 transition-colors cursor-pointer"
+            className="px-2.5 py-1 rounded-lg bg-white border border-slate-300 text-slate-700 text-[11px] font-bold hover:bg-slate-100 transition-colors cursor-pointer"
           >
             {allSelected ? 'Desmarcar Todos' : 'Marcar Todos'}
-          </button>
-          <button
-            onClick={onConfirmAndProcess}
-            disabled={totalConfirmed === 0}
-            className="flex-1 sm:flex-none px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-extrabold shadow-md hover:shadow-emerald-600/20 transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <CheckCircle2 className="w-4 h-4" />
-            Sim, Confirmar e Injetar Dados
           </button>
         </div>
       </div>
 
       {/* Main Interactive Mapping Body */}
-      <div className="mt-6">
+      <div className="mt-4">
         {viewMode === 'matrix' ? (
           <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
-            <div className="bg-slate-100 p-3 border-b border-slate-200 flex items-center justify-between flex-wrap gap-2">
+            {/* Subtle Clean Header */}
+            <div className="bg-slate-100/90 px-3.5 py-2.5 border-b border-slate-200 flex items-center justify-between flex-wrap gap-2">
               <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                <Table className="w-4 h-4 text-[#002B49]" />
-                Grade Semanal Treinada: <strong className="text-[#002B49]">{activeSheet}</strong>
+                <Table className="w-3.5 h-3.5 text-slate-500" />
+                <span>Grade Semanal:</span>
+                <span className="font-semibold text-slate-900">{activeSheet}</span>
               </span>
-              <div className="flex items-center gap-3 text-[11px] text-slate-500">
+              <div className="flex items-center gap-2.5 text-[11px] text-slate-500">
                 <span className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded bg-[#FEF3C7] border border-amber-400"></span>
-                  Semana SEI (Recuperação)
+                  <span className="w-2 h-2 rounded bg-amber-400"></span>
+                  Recuperação SEI
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded bg-[#E0F2FE] border border-sky-400"></span>
-                  Semana Avaliação (Prova Paulista)
+                  <span className="w-2 h-2 rounded bg-sky-500"></span>
+                  Prova Paulista
                 </span>
               </div>
             </div>
 
-            <div className="overflow-x-auto max-h-[500px] p-4">
-              <div className="space-y-3 min-w-[760px]">
+            <div className="overflow-x-auto max-h-[520px] p-3.5">
+              <div className="space-y-2.5 min-w-[760px]">
                 {sortedRowNumbers.map(rowNum => {
                   const rowFields = rowsMap.get(rowNum) || [];
                   const isSEIRow = rowFields.some(f => f.isSEI);
                   const isAvalRow = rowFields.some(f => f.isAvaliacao);
                   const weekNum = rowFields[0]?.weekNumber || 1;
+                  const isExpanded = Boolean(openWeeks[rowNum]);
+
+                  // Determine date badge text from Col B if present
+                  const dateField = rowFields.find(f => (f.colLetter || '').toUpperCase() === 'B' || (f.address || '').toUpperCase().startsWith('B'));
+                  const dateBadge = dateField?.fillValue || dateField?.currentValue || `Semana ${weekNum}`;
 
                   return (
                     <div 
                       key={rowNum}
-                      className={`p-3.5 rounded-xl border transition-all ${
+                      className={`rounded-xl border transition-all overflow-hidden ${
                         isSEIRow
-                          ? 'bg-amber-50/80 border-amber-300 shadow-2xs'
+                          ? 'bg-amber-50/70 border-amber-300 shadow-2xs'
                           : isAvalRow
-                          ? 'bg-sky-50/80 border-sky-300 shadow-2xs'
+                          ? 'bg-sky-50/70 border-sky-300 shadow-2xs'
                           : 'bg-white border-slate-200 shadow-2xs'
                       }`}
                     >
-                      <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-slate-100 text-xs">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-800 bg-slate-100 px-2.5 py-0.5 rounded border border-slate-200 font-mono text-[11px]">
+                      {/* Accordion Header for Week Row */}
+                      <button
+                        type="button"
+                        onClick={() => toggleWeek(rowNum)}
+                        className="w-full flex items-center justify-between p-3 text-left transition-colors hover:bg-black/5 cursor-pointer select-none"
+                      >
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {isExpanded ? (
+                            <ChevronUp className="w-4 h-4 text-slate-600 shrink-0" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4 text-slate-600 shrink-0" />
+                          )}
+                          <span className="font-mono font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 text-[11px]">
                             Linha {rowNum}
                           </span>
-                          <span className="font-bold text-slate-900">
+                          <span className="font-extrabold text-slate-900 text-xs">
                             Semana {weekNum} de Aula
                           </span>
                           {isSEIRow && (
                             <span className="bg-amber-500 text-slate-950 text-[10px] font-extrabold px-2 py-0.5 rounded shadow-2xs">
-                              RESERVA SEI / RECUPERAÇÃO
+                              SEI / RECUPERAÇÃO
                             </span>
                           )}
                           {isAvalRow && (
                             <span className="bg-sky-600 text-white text-[10px] font-extrabold px-2 py-0.5 rounded shadow-2xs">
-                              PROVA PAULISTA / AVALIAÇÃO OFICIAL
+                              PROVA PAULISTA
                             </span>
                           )}
                         </div>
-                        <span className="text-[11px] text-slate-400">
-                          {rowFields.length} colunas mapeadas
-                        </span>
-                      </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 hidden sm:inline truncate max-w-[200px]" title={dateBadge}>
+                            {dateBadge}
+                          </span>
+                          <span className="text-[10px] font-bold text-slate-400">
+                            {rowFields.length} colunas
+                          </span>
+                        </div>
+                      </button>
+
+                      {/* Accordion Content: Column cards */}
+                      {isExpanded && (
+                        <div className="p-3 pt-0 border-t border-slate-100 mt-1">
 
                       {/* Display the trained columns in this row */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
@@ -719,7 +444,9 @@ export const MappingViewer: React.FC<MappingViewerProps> = ({
                         })}
                       </div>
                     </div>
-                  );
+                  )}
+                </div>
+              );
                 })}
               </div>
             </div>
