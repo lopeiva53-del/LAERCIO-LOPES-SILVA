@@ -15,6 +15,10 @@ import {
   getOfficialSeducHolidays
 } from './src/utils/seducCalendarMetrics';
 import { FIXED_IMMUTABLE_CELLS, FixedCellKey } from './src/config/version';
+import { 
+  gerarCalendarioIA, 
+  converterCalendarioIAToSummary 
+} from './src/services/calendarioService';
 
 dotenv.config();
 
@@ -464,7 +468,7 @@ function sanitizeCellFillValue(val: string, origField: any, targetBimNum: number
 // API Route for Gemini processing
 app.post('/api/process-plan', async (req, res) => {
   try {
-    const { fields, scopeData, calendarData, planInfo, guidePdfText, prioritizedGuideSkills, slot2DocMode } = req.body;
+    const { fields, scopeData, calendarData, planInfo, guidePdfText, prioritizedGuideSkills, slot2DocMode, calendarioIA } = req.body;
 
     if (!fields || !Array.isArray(fields) || fields.length === 0) {
       return res.status(400).json({ error: 'Nenhum campo fornecido para preenchimento.' });
@@ -564,8 +568,19 @@ CRITÉRIO DE PRIORIDADE MÁXIMA (GUIA DE HABILIDADES PRIORIZADAS PDF):
       return f.injectionMode !== 'literal';
     });
 
-    // Strict calculation of cells J7, J8, and J9 according to official SEDUC-SP 2025 guidelines:
-    // J7: Dias Letivos do Bimestre (Calendário SEDUC Slot 3 descontados feriados e recessos)
+    const effectiveYear = (planInfo?.year ? parseInt(String(planInfo.year), 10) : undefined) || calendarData?.year || (calendarioIA?.ano) || 2026;
+
+    // Conexão direta com o robô de injeção: se calendarioIA for fornecido ou se calendarData estiver ausente/incompleto,
+    // consome diretamente o JSON canônico gerado por gerarCalendarioIA()
+    let activeCalendar = calendarData;
+    if (calendarioIA && (!activeCalendar || !activeCalendar.bimestres)) {
+      activeCalendar = converterCalendarioIAToSummary(calendarioIA);
+    } else if (!activeCalendar || !activeCalendar.bimestres) {
+      activeCalendar = converterCalendarioIAToSummary(gerarCalendarioIA(effectiveYear));
+    }
+
+    // Strict calculation of cells J7, J8, and J9 according to official SEDUC-SP guidelines:
+    // J7: Dias Letivos do Bimestre (Calendário Inteligente Oficial descontados feriados e recessos)
     // J8: Total de Aulas do Escopo Apurado (Apuração dinâmica integral do Slot 2 - Escopo e Sequência)
     // J9: Dias Letivos Efetivos com Desconto de Eventos (J7 menos Reuniões de Planejamento, Conselhos, Provas exclusivas e Feiras)
     const cellMetrics = computeSeducCellMetrics({
@@ -574,7 +589,7 @@ CRITÉRIO DE PRIORIDADE MÁXIMA (GUIA DE HABILIDADES PRIORIZADAS PDF):
       grade,
       plannedClassesInput: planInfo?.plannedClasses,
       scopeSkills: filteredScopeData,
-      calendarData
+      calendarData: activeCalendar
     });
 
     const plannedClasses = cellMetrics.j8AulasPrevistas;
@@ -582,7 +597,6 @@ CRITÉRIO DE PRIORIDADE MÁXIMA (GUIA DE HABILIDADES PRIORIZADAS PDF):
     const diasLetivosJ7 = cellMetrics.j7DiasLetivos;
     const diasEfetivosJ9 = cellMetrics.j9DiasEfetivos;
 
-    const effectiveYear = (planInfo?.year ? parseInt(String(planInfo.year), 10) : undefined) || calendarData?.year || 2026;
     const teacherSchedConfig = {
       classDays: planInfo?.classDays || planInfo?.teacherSchedule?.classDays || [4],
       classesPerDay: planInfo?.classesPerDay || planInfo?.teacherSchedule?.classesPerDay || 2,
@@ -596,7 +610,7 @@ CRITÉRIO DE PRIORIDADE MÁXIMA (GUIA DE HABILIDADES PRIORIZADAS PDF):
       classesPerDay: teacherSchedConfig.classesPerDay,
       plannedClasses: plannedClasses,
       rowCount: totalWeeks,
-      calendarData
+      calendarData: activeCalendar
     });
 
     const weeklyDistributionText = teacherSchedule.map((tw: any) => {

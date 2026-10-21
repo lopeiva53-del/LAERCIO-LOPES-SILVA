@@ -10,6 +10,12 @@ import { TrainingWizard } from './components/TrainingWizard';
 import { MappingViewer } from './components/MappingViewer';
 import { ProcessingProgress } from './components/ProcessingProgress';
 import { ExportPreview } from './components/ExportPreview';
+import { CalendarioInteligente } from './components/CalendarioInteligente';
+import { 
+  gerarCalendarioIA, 
+  converterCalendarioIAToSummary, 
+  CalendarioIANativo 
+} from './services/calendarioService';
 import { 
   UploadedSlotFile, 
   MappedField, 
@@ -114,7 +120,10 @@ export default function App() {
   const [scopeSkills, setScopeSkills] = useState<ScopeSkill[]>(SAMPLE_SCOPE_SKILLS);
   const [prioritizedPdfSkills, setPrioritizedPdfSkills] = useState<ScopeSkill[]>([]);
   const [pdfExtractedText, setPdfExtractedText] = useState<string>('');
-  const [calendarSummary, setCalendarSummary] = useState<CalendarSummary>(SAMPLE_CALENDAR_DATA);
+  const [calendarSummary, setCalendarSummary] = useState<CalendarSummary>(() => 
+    converterCalendarioIAToSummary(gerarCalendarioIA(2026))
+  );
+  const [isCalendarioOpen, setIsCalendarioOpen] = useState(false);
 
   const [isParsing, setIsParsing] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -218,7 +227,35 @@ export default function App() {
       ? (slot2Guide.status === 'ready' || (slot2.status === 'ready' && slot2.format === 'pdf'))
       : (slot2.status === 'ready' && slot2Guide.status === 'ready');
 
-  const allSlotsFilled = slot1.status === 'ready' && isSlot2Fulfilled && slot3.status === 'ready';
+  const allSlotsFilled = slot1.status === 'ready' && isSlot2Fulfilled;
+
+  // Sincronização reativa instantânea quando o Calendário Inteligente é editado
+  useEffect(() => {
+    const handleCalendarChange = () => {
+      const targetYear = planMetadata.year ? parseInt(String(planMetadata.year), 10) : 2026;
+      const calIA = gerarCalendarioIA(targetYear);
+      const updatedSummary = converterCalendarioIAToSummary(calIA);
+      setCalendarSummary(updatedSummary);
+
+      const metrics = computeSeducCellMetrics({
+        bimestre: planMetadata.bimestre,
+        subject: planMetadata.subject,
+        grade: planMetadata.grade,
+        plannedClassesInput: planMetadata.plannedClasses,
+        calendarData: updatedSummary,
+        year: targetYear
+      });
+
+      setPlanMetadata(prev => ({
+        ...prev,
+        diasLetivos: metrics.j7DiasLetivos,
+        diasEfetivos: metrics.j9DiasEfetivos
+      }));
+    };
+
+    window.addEventListener('seduc-calendario-updated', handleCalendarChange);
+    return () => window.removeEventListener('seduc-calendario-updated', handleCalendarChange);
+  }, [planMetadata.bimestre, planMetadata.subject, planMetadata.grade, planMetadata.plannedClasses, planMetadata.year]);
 
   // Handle file uploads into slots
   const handleFileUpload = async (slotNumber: 1 | 2 | 3, file: File, subSlot?: 'scope' | 'guide') => {
@@ -638,6 +675,7 @@ export default function App() {
             fields: confirmedFields,
             scopeData: activeScope,
             calendarData: calendarSummary,
+            calendarioIA: gerarCalendarioIA(Number(planMetadata.year) || 2026),
             planInfo: planMetadata,
             guidePdfText: currentPdfText || pdfExtractedText,
             prioritizedGuideSkills: activeGuideSkills,
@@ -996,6 +1034,7 @@ export default function App() {
         currentStep={currentStep}
         onStepClick={(step) => setCurrentStep(step as any)}
         activeProfileName={activeProfile.name}
+        onOpenCalendario={() => setIsCalendarioOpen(true)}
       />
 
       {/* Main Container */}
@@ -1036,6 +1075,7 @@ export default function App() {
             isParsing={isParsing}
             metadata={planMetadata}
             onChangeMetadata={handleUpdatePlanMetadata}
+            onOpenCalendario={() => setIsCalendarioOpen(true)}
           />
         )}
 
@@ -1095,6 +1135,16 @@ export default function App() {
           />
         )}
       </main>
+
+      {/* Módulo Nativo: Calendário Escolar Inteligente */}
+      <CalendarioInteligente
+        isOpen={isCalendarioOpen}
+        onClose={() => setIsCalendarioOpen(false)}
+        anoInicial={Number(planMetadata.year) || 2026}
+        onCalendarioChange={(calIA) => {
+          setCalendarSummary(converterCalendarioIAToSummary(calIA));
+        }}
+      />
     </div>
   );
 }

@@ -6,6 +6,7 @@ interface HeaderProps {
   currentStep: number;
   onStepClick: (step: number) => void;
   activeProfileName?: string;
+  onOpenCalendario?: () => void;
 }
 
 const PIPELINE_STEPS = [
@@ -20,6 +21,7 @@ export const Header: React.FC<HeaderProps> = ({
   currentStep,
   onStepClick,
   activeProfileName = 'URE Taubaté',
+  onOpenCalendario,
 }) => {
   return (
     <header className="bg-gradient-to-r from-[#002B49] via-[#003865] to-[#004B87] text-white shadow-md border-b border-slate-700/60">
@@ -44,6 +46,17 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           <div className="flex items-center gap-2 text-xs">
+            {onOpenCalendario && (
+              <button
+                type="button"
+                onClick={onOpenCalendario}
+                className="px-2 py-1 rounded bg-amber-400/20 hover:bg-amber-400/30 border border-amber-400/40 text-amber-300 text-[10px] font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                title="Abrir Calendário Escolar Inteligente (SEDUC-SP 2026)"
+              >
+                <Calendar className="w-3 h-3 text-amber-400" />
+                <span>Calendário 2026</span>
+              </button>
+            )}
             <span className="text-[11px] text-slate-300 hidden sm:inline-block">
               Perfil: <strong className="text-white">{activeProfileName}</strong>
             </span>

@@ -26,7 +26,7 @@ interface UploadSlotsProps {
   slot2Guide?: UploadedSlotFile;
   slot2Mode: Slot2DocMode;
   onChangeSlot2Mode: (mode: Slot2DocMode) => void;
-  slot3: UploadedSlotFile;
+  slot3?: UploadedSlotFile;
   calendarData?: CalendarSummary;
   onFileUpload: (slotNumber: 1 | 2 | 3, file: File, subSlot?: 'scope' | 'guide') => void;
   onClearSlot: (slotNumber: 1 | 2 | 3, subSlot?: 'scope' | 'guide') => void;
@@ -35,6 +35,7 @@ interface UploadSlotsProps {
   isParsing: boolean;
   metadata: PlanMetadata;
   onChangeMetadata: (metadata: PlanMetadata) => void;
+  onOpenCalendario?: () => void;
 }
 
 export const UploadSlots: React.FC<UploadSlotsProps> = ({
@@ -51,7 +52,8 @@ export const UploadSlots: React.FC<UploadSlotsProps> = ({
   allSlotsFilled,
   isParsing,
   metadata,
-  onChangeMetadata
+  onChangeMetadata,
+  onOpenCalendario
 }) => {
   const fileInputRef1 = useRef<HTMLInputElement>(null);
   const fileInputRef2Scope = useRef<HTMLInputElement>(null);
@@ -107,7 +109,43 @@ export const UploadSlots: React.FC<UploadSlotsProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5 mt-3.5">
+      {/* Banner Oficial do Calendário Escolar Inteligente */}
+      <div className="mt-3.5 bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 border border-emerald-200/80 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+            <Calendar className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-bold text-emerald-950">
+                Calendário Escolar Inteligente Integrado
+              </span>
+              <span className="text-[10px] font-bold bg-emerald-600 text-white px-1.5 py-0.2 rounded">
+                2026 Ativo • 200 Dias Letivos
+              </span>
+              <span className="text-[10px] font-semibold text-emerald-800 bg-white/80 border border-emerald-300 px-1.5 py-0.2 rounded">
+                Slot 3 Automatizado
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-600 mt-0.5">
+              Feriados paulistas, recessos e bimestres oficiais pré-configurados e sincronizados com as células J7, J8 e J9.
+            </p>
+          </div>
+        </div>
+
+        {onOpenCalendario && (
+          <button
+            type="button"
+            onClick={onOpenCalendario}
+            className="shrink-0 bg-white hover:bg-emerald-50 text-emerald-900 border border-emerald-300 font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+          >
+            <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Abrir / Personalizar Calendário</span>
+          </button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-3.5">
         {/* Slot 1: Formulário Padrão */}
         <div 
           onDrop={(e) => handleDrop(e, 1)}
@@ -385,89 +423,6 @@ export const UploadSlots: React.FC<UploadSlotsProps> = ({
           </div>
         </div>
 
-        {/* Slot 3: Calendário SEDUC */}
-        <div 
-          onDrop={(e) => handleDrop(e, 3)}
-          onDragOver={handleDragOver}
-          className={`flex flex-col rounded-xl border-2 transition-all p-5 relative ${
-            slot3.status === 'ready'
-              ? 'border-emerald-400 bg-emerald-50/20 shadow-sm'
-              : 'border-dashed border-slate-300 hover:border-[#005A9C] bg-slate-50/50'
-          }`}
-        >
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-teal-100 text-teal-800">
-                <Calendar className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-teal-800 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200">
-                  Slot 3 • Calendário
-                </span>
-                <h3 className="font-bold text-slate-900 text-sm mt-0.5">Calendário SEDUC</h3>
-              </div>
-            </div>
-            {slot3.status === 'ready' && (
-              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-            )}
-          </div>
-
-          <p className="text-xs text-slate-600 mb-4 flex-grow">
-            Calendário escolar oficial SEDUC-SP com 200 dias letivos, feriados de SP, recessos, SEI e avaliações (.xlsx, .pdf, imagem ou .csv).
-          </p>
-
-          <input
-            type="file"
-            ref={fileInputRef3}
-            onChange={(e) => e.target.files?.[0] && onFileUpload(3, e.target.files[0])}
-            accept=".xlsx,.pdf,.png,.jpg,.jpeg,.csv"
-            className="hidden"
-          />
-
-          {slot3.status === 'ready' ? (
-            <div className="bg-white rounded-lg p-3 border border-emerald-200 shadow-xs mb-3">
-              <div className="flex items-start justify-between">
-                <div className="truncate pr-2">
-                  <p className="text-xs font-bold text-slate-800 truncate" title={slot3.name}>
-                    {slot3.name}
-                  </p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    {formatFileSize(slot3.size)} • <span className="uppercase font-semibold text-emerald-700">{slot3.format}</span>
-                  </p>
-                  {slot3.summary && (
-                    <p className="text-[11px] text-emerald-700 mt-1 font-medium">
-                      ✓ {slot3.summary}
-                    </p>
-                  )}
-                </div>
-                <button
-                  onClick={() => onClearSlot(3)}
-                  className="text-xs text-slate-400 hover:text-rose-600 p-1"
-                  title="Remover arquivo"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div 
-              onClick={() => fileInputRef3.current?.click()}
-              className="border border-dashed border-slate-300 rounded-lg p-6 text-center cursor-pointer hover:bg-teal-50/50 transition-colors mb-3"
-            >
-              <Upload className="w-7 h-7 text-slate-400 mx-auto mb-2" />
-              <p className="text-xs font-semibold text-slate-700">
-                Arraste ou clique para selecionar
-              </p>
-              <p className="text-[11px] text-slate-400 mt-1">
-                Suporta: .xlsx, .pdf, imagem (.png/.jpg) ou .csv
-              </p>
-            </div>
-          )}
-
-          <div className="text-[11px] text-slate-500 bg-slate-100/70 p-2 rounded border border-slate-200">
-            <strong>Contabilização Real:</strong> Desconta feriados e reserva semanas para Prova Paulista, SARESP e SEI.
-          </div>
-        </div>
       </div>
 
       {/* Card de Identificação / Cabeçalho */}
@@ -761,7 +716,7 @@ export const UploadSlots: React.FC<UploadSlotsProps> = ({
           {!allSlotsFilled ? (
             <span className="flex items-center gap-1.5 text-amber-600 font-medium">
               <AlertCircle className="w-3.5 h-3.5" />
-              Faça o upload dos 3 arquivos para prosseguir.
+              Faça o upload dos arquivos de base para prosseguir.
             </span>
           ) : (
             <span className="flex items-center gap-1.5 text-emerald-700 font-semibold">
